@@ -1,98 +1,181 @@
 <?php
-
-session_start();
-
-// ملف admin/dashboard.php
 require __DIR__ . '/../includes/config.php';
-require __DIR__ . '/../includes/header.php';
+require __DIR__ . '/../includes/user_auth.php';
 
-
-// التحقق من تسجيل الدخول
-if (!isset($_SESSION['user_id']) || $_SESSION['user_type'] != 'user') {
-    header("Location: " . BASE_URL . "login.php");
-    exit();
-}
-
-// جلب بيانات المستخدم
+// جلب البيانات
 $user_id = $_SESSION['user_id'];
-$sql_user = "SELECT * FROM users WHERE id = $user_id";
-$result_user = $conn->query($sql_user);
-$user = $result_user->fetch_assoc();
 
-// جلب الكتب المستعارة
-$sql_books = "SELECT books.title, transactions.start_date, transactions.end_date 
-              FROM transactions 
-              JOIN books ON transactions.book_id = books.id 
-              WHERE transactions.user_id = $user_id 
-              AND transactions.status = 'active'";
-$result_books = $conn->query($sql_books);
+// الكتب المستعارة
+$stmt = $conn->prepare("
+    SELECT b.title, b.author, br.request_date, br.due_date, 
+    DATEDIFF(br.due_date, CURDATE()) AS remaining_days
+    FROM borrow_requests br
+    JOIN books b ON br.book_id = b.id
+    WHERE br.user_id = ? AND br.status = 'approved'
+");
+$stmt->bind_param("i", $user_id);
+$stmt->execute();
+$borrowed_books = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+
+// الطلبات المعلقة
+$stmt = $conn->prepare("
+    SELECT b.title, b.author, br.request_date 
+    FROM borrow_requests br
+    JOIN books b ON br.book_id = b.id
+    WHERE br.user_id = ? AND br.status = 'pending'
+");
+$stmt->bind_param("i", $user_id);
+$stmt->execute();
+$pending_requests = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
 ?>
+
 <!DOCTYPE html>
-<html lang="ar">
-
-
-<div class="container mt-5">
-    <div class="row">
-        <!-- البطاقة الشخصية -->
-        <div class="col-md-4 mb-4">
-            <div class="card shadow">
-                <div class="card-header bg-primary text-white">
-                    <h5 class="card-title mb-0">معلومات الحساب</h5>
-                </div>
-                <div class="card-body">
-                    <ul class="list-group list-group-flush">
-                        <li class="list-group-item">
-                            <strong>الاسم:</strong> <?php echo $user['name']; ?>
-                        </li>
-                        <li class="list-group-item">
-                            <strong>البريد:</strong> <?php echo $user['email']; ?>
-                        </li>
-                        <li class="list-group-item">
-                            <strong>تاريخ التسجيل:</strong> 
-                            <?php echo date('Y/m/d', strtotime($user['created_at'])); ?>
-                        </li>
-                    </ul>
+<html lang="ar" dir="rtl">
+<head>
+    <?php include __DIR__ . '/../includes/header.php'; ?>
+    <title>لوحة التحكم - المستخدم</title>
+    <style>
+        .sidebar { background: #f8f9fa; min-height: 100vh; }
+        .sidebar .btn { text-align: right; width: 100%; margin: 5px 0; }
+        .content-section { display: none; }
+        .content-section.active { display: block; }
+        .overdue { background-color: #ffe6e6; }
+        .due-soon { background-color: #fff3cd; }
+    </style>
+</head>
+<body>
+    <div class="container-fluid">
+        <div class="row">
+            <!-- الشريط الجانبي -->
+            <div class="col-md-3 sidebar p-4">
+                <div class="d-grid gap-2">
+                    <button onclick="showSection('profile')" class="btn btn-outline-primary active">
+                        <i class="fas fa-user"></i> الملف الشخصي
+                    </button>
+                    
+                    <button onclick="showSection('borrowed')" class="btn btn-outline-success">
+                        <i class="fas fa-book"></i> الكتب المستعارة
+                    </button>
+                    
+                    <button onclick="showSection('pending')" class="btn btn-outline-warning">
+                        <i class="fas fa-clock"></i> الطلبات المعلقة
+                    </button>
                 </div>
             </div>
-        </div>
 
-        <!-- الكتب المستعارة -->
-        <div class="col-md-8">
-            <div class="card shadow">
-                <div class="card-header bg-success text-white">
-                    <h5 class="card-title mb-0">الكتب الحالية</h5>
+            <!-- المحتوى الرئيسي -->
+            <div class="col-md-9 p-4">
+                <!-- قسم الملف الشخصي -->
+                <div id="profile" class="content-section active">
+                    <h4 class="mb-4">👤 الملف الشخصي</h4>
+                    <div class="card">
+                    <div class="card-body">
+                        <p><strong>الاسم:</strong> <?= htmlspecialchars($_SESSION['user_name'] ?? 'غير متوفر') ?></p>
+                        <p><strong>البريد الإلكتروني:</strong> <?= htmlspecialchars($_SESSION['user_email'] ?? 'غير متوفر') ?></p>
+                        <p><strong>تاريخ التسجيل:</strong> <?= $_SESSION['created_at'] ?? 'غير معروف' ?></p>
+                    </div>
+                    </div>
                 </div>
-                <div class="card-body">
-                    <?php if ($result_books->num_rows > 0): ?>
-                        <div class="table-responsive">
-                            <table class="table table-hover">
-                                <thead>
-                                    <tr>
-                                        <th>اسم الكتاب</th>
-                                        <th>تاريخ الاستعارة</th>
-                                        <th>تاريخ الإرجاع</th>
-                                        <th>الحالة</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <?php while($book = $result_books->fetch_assoc()): ?>
-                                    <tr>
-                                        <td><?php echo $book['title']; ?></td>
-                                        <td><?php echo $book['start_date']; ?></td>
-                                        <td><?php echo $book['end_date']; ?></td>
-                                        <td><span class="badge bg-success">نشطة</span></td>
-                                    </tr>
-                                    <?php endwhile; ?>
-                                </tbody>
-                            </table>
-                        </div>
+
+                <!-- قسم الكتب المستعارة -->
+                <div id="borrowed" class="content-section">
+                    <h4 class="mb-4">📚 الكتب المستعارة</h4>
+                    <?php if(count($borrowed_books) > 0): ?>
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>العنوان</th>
+                                    <th>المؤلف</th>
+                                    <th>تاريخ الاستعارة</th>
+                                    <th>تاريخ الاستحقاق</th>
+                                    <th>الحالة</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <?php foreach ($borrowed_books as $book): 
+                                    $remaining = $book['remaining_days'];
+                                    $status_class = '';
+                                    $status_text = '';
+                                    
+                                    if ($remaining < 0) {
+                                        $status_class = 'overdue';
+                                        $status_text = '<span class="text-danger">متأخر ' . abs($remaining) . ' يوم</span>';
+                                    } elseif ($remaining <= 3) {
+                                        $status_class = 'due-soon';
+                                        $status_text = '<span class="text-warning">' . $remaining . ' أيام</span>';
+                                    } else {
+                                        $status_text = $remaining . ' يوم';
+                                    }
+                                ?>
+                                <tr class="<?= $status_class ?>">
+                                    <td><?= htmlspecialchars($book['title']) ?></td>
+                                    <td><?= htmlspecialchars($book['author']) ?></td>
+                                    <td><?= date('Y/m/d', strtotime($book['request_date'])) ?></td>
+                                    <td><?= date('Y/m/d', strtotime($book['due_date'])) ?></td>
+                                    <td><?= $status_text ?></td>
+                                </tr>
+                                <?php endforeach; ?>
+                            </tbody>
+                        </table>
+                    </div>
                     <?php else: ?>
-                        <div class="alert alert-info">لا توجد كتب مستعارة حالياً</div>
+                    <div class="alert alert-info">لا يوجد كتب مستعارة حالياً</div>
+                    <?php endif; ?>
+                </div>
+
+                <!-- قسم الطلبات المعلقة -->
+                <div id="pending" class="content-section">
+                    <h4 class="mb-4">⏳ الطلبات المعلقة</h4>
+                    <?php if(count($pending_requests) > 0): ?>
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>العنوان</th>
+                                    <th>المؤلف</th>
+                                    <th>تاريخ الطلب</th>
+                                    <th>الحالة</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <?php foreach ($pending_requests as $request): ?>
+                                <tr>
+                                    <td><?= htmlspecialchars($request['title']) ?></td>
+                                    <td><?= htmlspecialchars($request['author']) ?></td>
+                                    <td><?= date('Y/m/d', strtotime($request['request_date'])) ?></td>
+                                    <td><span class="badge bg-warning">قيد المراجعة</span></td>
+                                </tr>
+                                <?php endforeach; ?>
+                            </tbody>
+                        </table>
+                    </div>
+                    <?php else: ?>
+                    <div class="alert alert-info">لا توجد طلبات معلقة</div>
                     <?php endif; ?>
                 </div>
             </div>
         </div>
     </div>
-</div>
 
-<?php require __DIR__ . '/../includes/footer.php'; ?>
+    <script>
+        function showSection(sectionId) {
+            // إزالة النشاط من جميع الأزرار
+            document.querySelectorAll('.sidebar .btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            
+            // إخفاء جميع الأقسام
+            document.querySelectorAll('.content-section').forEach(section => {
+                section.classList.remove('active');
+            });
+            
+            // إظهار القسم المحدد وإضافة النشاط للزر
+            document.getElementById(sectionId).classList.add('active');
+            event.target.classList.add('active');
+        }
+    </script>
+
+    <?php include __DIR__ . '/../includes/footer.php'; ?>
+</body>
+</html>

@@ -18,11 +18,6 @@ error_log("جلسة المستخدم: " . print_r($_SESSION, true));
 require __DIR__ . '/includes/config.php';
 require __DIR__ . '/includes/header.php';
 
-// تمكين عرض الأخطاء للتطوير (يجب تعطيله في الإنتاج)
-error_reporting(E_ALL);
-ini_set('display_errors', 1);
-ini_set('display_startup_errors', 1);
-
 // التحقق من الصلاحيات للعمليات الإدارية
 function isAdmin() {
     return isset($_SESSION['user_id']) && $_SESSION['user_type'] === 'admin';
@@ -76,10 +71,12 @@ if(isset($_POST['login'])){
     if($result->num_rows > 0){
         $user = $result->fetch_assoc();
         if(password_verify($password, $user['password'])){
+            // تخزين جميع البيانات في الجلسة
             $_SESSION['user_id'] = $user['id'];
             $_SESSION['user_name'] = $user['name'];
+            $_SESSION['user_email'] = $user['email']; // <-- إضافة البريد
             $_SESSION['user_type'] = $user['user_type'];
-            
+            $_SESSION['created_at'] = $user['created_at']; // 
             // التوجيه الصحيح
             header("Location: " . BASE_URL . ($user['user_type'] == 'admin' ? 'admin/dashboard.php' : 'user/dashboard.php'));
             exit();

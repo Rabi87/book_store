@@ -7,28 +7,40 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $action = $_POST['action'];
     
     try {
-        // تفعيل تقارير الأخطاء
         mysqli_report(MYSQLI_REPORT_ERROR | MYSQLI_REPORT_STRICT);
-        
         $conn->begin_transaction();
         
-        // 1. تحديث حالة الطلب
         $new_status = ($action === 'approve') ? 'approved' : 'rejected';
-        $stmt = $conn->prepare("
-            UPDATE borrow_requests 
-            SET status = ?, processed_at = NOW() 
-            WHERE id = ?
-        ");
-        
-        if (!$stmt) {
-            throw new Exception("خطأ في الاستعلام: " . $conn->error);
+        $loan_duration = 14; // يمكن تغييرها حسب سياسة المكتبة
+
+        if ($action === 'approve') {
+            // حالة الموافقة - تحديث المدة وتاريخ الاستحقاق
+            $stmt = $conn->prepare("
+                UPDATE borrow_requests 
+                SET 
+                    status = ?, 
+                    processed_at = NOW(),
+                    loan_duration = ?,
+                    due_date = DATE_ADD(NOW(), INTERVAL ? DAY)
+                WHERE id = ?
+            ");
+            $stmt->bind_param("siii", $new_status, $loan_duration, $loan_duration, $request_id);
+        } else {
+            // حالة الرفض - تحديث الحالة فقط
+            $stmt = $conn->prepare("
+                UPDATE borrow_requests 
+                SET 
+                    status = ?, 
+                    processed_at = NOW()
+                WHERE id = ?
+            ");
+            $stmt->bind_param("si", $new_status, $request_id);
         }
         
-        $stmt->bind_param("si", $new_status, $request_id);
         $stmt->execute();
-        
-        // 2. إعادة الكمية إذا كان الرفض
+
         if ($action === 'reject') {
+            // إعادة الكمية إذا كان الرفض
             $stmt = $conn->prepare("
                 UPDATE books 
                 SET quantity = quantity + 1 
@@ -41,9 +53,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $stmt->bind_param("i", $request_id);
             $stmt->execute();
         }
-        
+
         $conn->commit();
-        $_SESSION['success'] = "تم التحديث بنجاح!";
+        $_SESSION['success'] = "تم تحديث حالة الطلب بنجاح!";
+        
     } catch (Exception $e) {
         $conn->rollback();
         $_SESSION['error'] = "خطأ: " . $e->getMessage();
