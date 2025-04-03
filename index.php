@@ -28,18 +28,15 @@ $e_books = $conn->query("SELECT * FROM books WHERE type = 'e-book'");
                     </p>
                     <?php if(isset($_SESSION['user_id'])): ?>
 
-                        <form method="POST" action="<?= BASE_URL ?>process.php" style="display: inline;">
-                        <input type="hidden" name="book_id" value="<?= $book['id'] ?>">
+                        <form method="POST" action="process.php" style="display: inline;">
                         <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?>">
                           <button type="submit" name="borrow_book" class="btn btn-primary"
                              onclick="return confirm('هل تريد استعارة هذا الكتاب؟')">
-                            استعارة fالكتاب
-                          </button>
+                            استعارة الكتاب
+                          </button>   
+                        <input type="hidden" name="book_id" value="<?= $book['id'] ?>">                        
                         </form>
-                    <a href="<?= BASE_URL ?>process.php?borrow=<?= $book['id'] ?>" class="btn btn-primary"
-                        onclick="return confirm('هل تريد استعارة هذا الكتاب؟')">
-                        استعارة الكتاب
-                    </a>
+                 
                     <?php else: ?>
                     <button class="btn btn-secondary" data-bs-toggle="modal" data-bs-target="#loginModal">
                         سجل دخول للاستعارة

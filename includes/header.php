@@ -42,6 +42,9 @@ if (session_status() === PHP_SESSION_NONE) {
                     </li>
                     <?php if($_SESSION['user_type'] == 'admin'): ?>
                         <li class="nav-item">
+                        <a class="nav-link"  href="<?= BASE_URL ?>admin/dashboard.php" > لوحة التحكم </a>
+                    </li>
+                        <li class="nav-item">
                             <a class="nav-link text-warning" href="<?= BASE_URL ?>admin/manage_books.php">الإدارة 
                         </li>
                     <?php endif; ?>

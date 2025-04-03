@@ -1,6 +1,18 @@
 <?php
+
+// يجب أن تكون هذه أول سطور الملف
+error_reporting(E_ALL);
+ini_set('display_errors', 1);
+ini_set('display_startup_errors', 1);
+
 if (session_status() === PHP_SESSION_NONE) {
-    session_start();}
+    session_start(); // بدء الجلسة هنا قبل أي استخدام للـ $_SESSION
+}
+
+error_log("======== بدء معالجة الطلب ========");
+error_log("بيانات POST: " . print_r($_POST, true));
+error_log("بيانات GET: " . print_r($_GET, true));
+error_log("جلسة المستخدم: " . print_r($_SESSION, true));
 
 // تعريف الثوابت الأساسية
 require __DIR__ . '/includes/config.php';
@@ -9,6 +21,7 @@ require __DIR__ . '/includes/header.php';
 // تمكين عرض الأخطاء للتطوير (يجب تعطيله في الإنتاج)
 error_reporting(E_ALL);
 ini_set('display_errors', 1);
+ini_set('display_startup_errors', 1);
 
 // التحقق من الصلاحيات للعمليات الإدارية
 function isAdmin() {
@@ -113,7 +126,7 @@ if (isset($_POST['add_book']) && isAdmin()) {
 
 
 // معالجة طلب الاستعارة
-if(isset($_GET['borrow_book'])) {
+if(isset($_POST['borrow_book'])) {
     try {
         // التحقق من CSRF Token
         if (!isset($_POST['csrf_token']) || $_POST['csrf_token'] !== $_SESSION['csrf_token']) {
@@ -167,10 +180,12 @@ if(isset($_GET['borrow_book'])) {
 
         $_SESSION['success'] = "تم إرسال طلب الاستعارة بنجاح!";
         
-    } catch (Exception $e) {
-        $conn->rollback();
-        $_SESSION['error'] = $e->getMessage();
-    }
+    }catch (Exception $e) {
+            error_log("Borrow Error: " . $e->getMessage());
+            $_SESSION['error'] = "فشل في عملية الاستعارة: " . $e->getMessage();
+            header("Location: index.php");
+            exit();
+        }
     
     header("Location: " . BASE_URL . "index.php");
     exit();
