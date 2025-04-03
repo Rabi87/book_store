@@ -1,0 +1,329 @@
+<?php
+session_start();
+include 'includes/config.php';
+include 'includes/header.php';
+?>
+
+<!-- شريط التنقل -->
+<nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+    <div class="container">
+        <a class="navbar-brand" href="index.php">المكتبة الذكية</a>
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+        <div class="collapse navbar-collapse" id="navbarNav">
+            <ul class="navbar-nav ms-auto">
+                <?php if(isset($_SESSION['user_id'])): ?>
+                    <li class="nav-item">
+                        <a class="nav-link" href="user/dashboard.php">لوحة التحكم</a>
+                    </li>
+                    <?php if($_SESSION['user_type'] == 'admin'): ?>
+                        <li class="nav-item">
+                            <a class="nav-link" href="admin/dashboard.php">الإدارة</a>
+                        </li>
+                    <?php endif; ?>
+                    <li class="nav-item">
+                        <a class="nav-link" href="logout.php">تسجيل الخروج</a>
+                    </li>
+                <?php else: ?>
+                    <li class="nav-item">
+                        <a class="nav-link" href="login.php">تسجيل الدخول</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="register.php">تسجيل جديد</a>
+                    </li>
+                <?php endif; ?>
+            </ul>
+        </div>
+    </div>
+</nav>
+
+<!-- محتوى الصفحة الرئيسية -->
+<div class="container my-5">
+    <h1 class="text-center mb-4">مرحبًا بكم في المكتبة الذكية</h1>
+    
+    <!-- قسم الكتب الفيزيائية -->
+    <div class="row mb-5">
+        <h3 class="mb-3">الكتب الفيزيائية</h3>
+        <?php
+        $sql = "SELECT * FROM books WHERE type = 'physical' AND quantity > 0";
+        $result = $conn->query($sql);
+        
+        if($result->num_rows > 0):
+            while($row = $result->fetch_assoc()):
+        ?>
+        <div class="col-md-4 mb-4">
+            <div class="card h-100">
+                <div class="card-body">
+                    <h5 class="card-title"><?php echo $row['title']; ?></h5>
+                    <p class="card-text">
+                        <strong>المؤلف:</strong> <?php echo $row['author']; ?><br>
+                        <strong>المتبقي:</strong> <?php echo $row['quantity']; ?>
+                    </p>
+                    <?php if(isset($_SESSION['user_id'])): ?>
+                        <a href="process.php?borrow=<?php echo $row['id']; ?>" 
+                           class="btn btn-primary" 
+                           onclick="return confirm('هل تريد استعارة هذا الكتاب؟')">
+                            استعارة الكتاب
+                        </a>
+                    <?php else: ?>
+                        <button class="btn btn-secondary" 
+                                data-bs-toggle="modal" 
+                                data-bs-target="#loginModal">
+                            سجل دخول للاستعارة
+                        </button>
+                    <?php endif; ?>
+                </div>
+            </div>
+        </div>
+        <?php endwhile; else: ?>
+        <div class="col-12">
+            <div class="alert alert-warning">لا توجد كتب فيزيائية متاحة حاليًا</div>
+        </div>
+        <?php endif; ?>
+    </div>
+
+    <!-- قسم الكتب الإلكترونية -->
+    <div class="row">
+        <h3 class="mb-3">الكتب الإلكترونية</h3>
+        <?php
+        $sql = "SELECT * FROM books WHERE type = 'e-book'";
+        $result = $conn->query($sql);
+        
+        if($result->num_rows > 0):
+            while($row = $result->fetch_assoc()):
+        ?>
+        <div class="col-md-4 mb-4">
+            <div class="card h-100">
+                <div class="card-body">
+                    <h5 class="card-title"><?php echo $row['title']; ?></h5>
+                    <p class="card-text">
+                        <strong>المؤلف:</strong> <?php echo $row['author']; ?><br>
+                        <strong>السعر:</strong> <?php echo $row['price']; ?> ر.س
+                    </p>
+                    <?php if(isset($_SESSION['user_id'])): ?>
+                        <a href="process.php?buy=<?php echo $row['id']; ?>" 
+                           class="btn btn-success" 
+                           onclick="return confirm('هل تريد شراء هذا الكتاب؟')">
+                            شراء الكتاب
+                        </a>
+                    <?php else: ?>
+                        <button class="btn btn-secondary" 
+                                data-bs-toggle="modal" 
+                                data-bs-target="#loginModal">
+                            سجل دخول للشراء
+                        </button>
+                    <?php endif; ?>
+                </div>
+            </div>
+        </div>
+        <?php endwhile; else: ?>
+        <div class="col-12">
+            <div class="alert alert-warning">لا توجد كتب إلكترونية متاحة حاليًا</div>
+        </div>
+        <?php endif; ?>
+    </div>
+</div>
+
+<!-- مودال تسجيل الدخول -->
+<div class="modal fade" id="loginModal">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">تسجيل الدخول مطلوب</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>يجب تسجيل الدخول لإكمال هذه العملية</p>
+                <a href="login.php" class="btn btn-primary">تسجيل الدخول</a>
+                <a href="register.php" class="btn btn-secondary">إنشاء حساب</a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<?php
+include 'includes/footer.php';
+$conn->close();
+?>
+
+
+
+//////////////////////////////////////////////////////////////////////////////////////////
+
+
+<?php
+session_start();
+?>
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>المكتبة الذكية</title>
+    
+    <!-- Bootstrap 5 -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    
+    <!-- الخطوط العربية -->
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&display=swap" rel="stylesheet">
+    
+    <!-- CSS مخصص -->
+    <style>
+        .navbar-brand img {
+            height: 40px;
+            margin-left: 15px;
+        }
+        
+        .nav-link {
+            transition: all 0.3s ease;
+        }
+        
+        .nav-link:hover {
+            transform: translateY(-2px);
+        }
+    </style>
+</head>
+<body class="d-flex flex-column min-vh-100">
+
+<nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+    <div class="container-fluid">
+        <!-- اللوغو على اليمين -->
+        <a class="navbar-brand ms-3" href="index.php">
+            <img src="assets/images/logo.png" alt="شعار المكتبة">
+        </a>
+        
+        <!-- زر القائمة المنسدلة للأجهزة الصغيرة -->
+        <button class="navbar-toggler me-auto" type="button" data-bs-toggle="collapse" data-bs-target="#mainNav">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+
+        <!-- عناصر التنقل على اليسار -->
+        <div class="collapse navbar-collapse" id="mainNav">
+            <ul class="navbar-nav me-auto mb-2 mb-lg-0">
+                <?php if(isset($_SESSION['user_id'])): ?>
+                    <!-- عناصر المستخدم المسجل -->
+                    <li class="nav-item">
+                        <a class="nav-link" href="user/dashboard.php">لوحة التحكم</a>
+                    </li>
+                    <?php if($_SESSION['user_type'] == 'admin'): ?>
+                        <li class="nav-item">
+                            <a class="nav-link text-warning" href="admin/dashboard.php">لوحة الإدارة</a>
+                        </li>
+                    <?php endif; ?>
+                    <li class="nav-item">
+                        <a class="nav-link" href="../logout.php">تسجيل الخروج</a>
+                    </li>
+                <?php else: ?>
+                    <!-- عناصر الزوار -->
+                    <li class="nav-item">
+                        <a class="nav-link" href="../login.php">تسجيل الدخول</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="../register.php">إنشاء حساب</a>
+                    </li>
+                <?php endif; ?>
+            </ul>
+            
+            <!-- معلومات المستخدم -->
+            <?php if(isset($_SESSION['user_id'])): ?>
+                <div class="d-flex align-items-center text-white ms-3">
+                    <span class="me-2">مرحبًا، <?php echo htmlspecialchars($_SESSION['user_name']); ?></span>
+                    <span class="badge bg-light text-dark">
+                        <?php echo ($_SESSION['user_type'] == 'admin') ? 'مدير' : 'مستخدم'; ?>
+                    </span>
+                </div>
+            <?php endif; ?>
+        </div>
+    </div>
+</nav>
+
+<!-- بداية المحتوى الرئيسي -->
+<main class="flex-grow-1">
+
+/////////////////////////////////////////////////////////////////////////////////////
+
+<?php
+require __DIR__ . '/../../includes/config.php'; // تعديل المسار حسب موقع الملف
+require __DIR__ . '/../../includes/header.php';
+
+// التحقق من صلاحيات المسؤول
+if($_SESSION['user_type'] != 'admin'){
+    header("Location: ../index.php");
+}
+?>
+
+<div class="container mt-5">
+    <h2>لوحة التحكم الإدارية</h2>
+    
+    <!-- إضافة كتاب جديد -->
+    <form action="../process.php" method="POST">
+        <div class="mb-3">
+            <input type="text" name="title" placeholder="عنوان الكتاب" class="form-control">
+        </div>
+        <div class="mb-3">
+            <input type="text" name="author" placeholder="المؤلف" class="form-control">
+        </div>
+        <button type="submit" name="add_book" class="btn btn-success">إضافة كتاب</button>
+    </form>
+</div>
+
+<?php include 'footer.php'; ?>
+
+////////////////////////////////////////////////////////////////////////////
+
+1. سير عملية الاستعارة:
+الخطوة 1: طلب الاستعارة من المستخدم
+
+المستخدم يتصفح الكتب في index.php.
+
+عند الضغط على زر "استعارة الكتاب"، يُرسل طلب إلى process.php.
+
+الخطوة 2: معالجة الطلب في process.php
+
+التحقق من:
+
+وجود جلسة مستخدم نشطة.
+
+صحة CSRF Token (للحماية من الهجمات).
+
+توفر الكتاب في قاعدة البيانات.
+
+الخطوة 3: إدخال البيانات في قاعدة البيانات
+
+إضافة سجل جديد في جدول borrow_requests بحالة pending.
+
+تقليل كمية الكتاب في جدول books بمقدار 1.
+
+الخطوة 4: مراجعة الطلب من قبل المدير
+
+المدير يرى الطلبات في لوحة التحكم (admin/dashboard.php).
+
+يغير حالة الطلب إلى approved أو rejected.
+
+الخطوة 5: إشعار المستخدم
+
+في حالة الرفض: تعود الكمية إلى جدول books.
+
+في حالة القبول: يحتفظ بالكمية المخصومة.
+
+2. الملفات المتأثرة:
+الملف	الوظيفة
+index.php	عرض الكتب المتاحة مع زر الاستعارة.
+process.php	معالجة طلب الاستعارة وإدارة العمليات.
+admin/dashboard.php	لوحة تحكم المدير لمراجعة الطلبات.
+includes/config.php	إعدادات اتصال قاعدة البيانات.
+includes/header.php	تصميم الهيدر المشترك.
+3. دور المدير في العملية:
+الوصول إلى الطلبات:
+
+يستعرض قائمة الطلبات عبر لوحة التحكم (admin/dashboard.php).
+
+يستخدم نموذجًا لتغيير حالة كل طلب.
+
+الموافقة أو الرفض:
+
+عند الموافقة: يبقى الكتاب مخصومًا من الكمية.
+
+عند الرفض: تُعاد الكمية إلى جدول books.
+//////////////////////////////////////////////////////////////////////////

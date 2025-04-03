@@ -1,0 +1,36 @@
+/* assets/css/style.css */
+
+:root {
+    --primary-color: #6d1a36;
+    /* عنابي */
+    --secondary-color: #c19a6b;
+    /* ذهبي */
+    --accent-color: #e7d7c1;
+    /* بيج */
+    --light-bg: #f8f5f2;
+    /* خلفية فاتحة */
+    --dark-text: #3a2e2a;
+    /* نص غامق */
+    --success-color: #5c8370;
+    /* أخضر */
+    --sidebar-width: 250px;
+}
+
+body {
+    font-family: 'Cairo', sans-serif;
+    background-color: #f8f9fa;
+    direction: rtl;
+    text-align: right;
+}
+
+.card {
+    transition: transform 0.3s;
+}
+
+.card:hover {
+    transform: translateY(-5px);
+}
+
+.navbar {
+    background-color: var(--primary-color)!important;
+}
