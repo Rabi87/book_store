@@ -70,9 +70,7 @@ $pending_requests = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
                     <h4 class="mb-4">👤 الملف الشخصي</h4>
                     <div class="card">
                     <div class="card-body">
-                        <p><strong>الاسم:</strong> <?= htmlspecialchars($_SESSION['user_name'] ?? 'غير متوفر') ?></p>
-                        <p><strong>البريد الإلكتروني:</strong> <?= htmlspecialchars($_SESSION['user_email'] ?? 'غير متوفر') ?></p>
-                        <p><strong>تاريخ التسجيل:</strong> <?= $_SESSION['created_at'] ?? 'غير معروف' ?></p>
+                         <?php require __DIR__ . '/profile.php'; ?>
                     </div>
                     </div>
                 </div>
@@ -176,6 +174,6 @@ $pending_requests = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
         }
     </script>
 
-    <?php include __DIR__ . '/../includes/footer.php'; ?>
+    <?php require __DIR__ . '/../includes/footer.php'; ?>
 </body>
 </html>

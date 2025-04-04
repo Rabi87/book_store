@@ -1,6 +1,7 @@
 <?php
-session_start();
-include '../includes/config.php';
+
+require __DIR__ . '/../includes/config.php';
+
 
 // التحقق من تسجيل الدخول
 if (!isset($_SESSION['user_id']) || $_SESSION['user_type'] != 'user') {
@@ -50,51 +51,32 @@ $result = $conn->query($sql);
 $user = $result->fetch_assoc();
 ?>
 
-<?php include '../includes/header.php'; ?>
+<?php if ($error): ?>
+<div class="alert alert-danger"><?php echo $error; ?></div>
+<?php endif; ?>
 
-<div class="container mt-5">
-    <div class="row justify-content-center">
-        <div class="col-md-8">
-            <div class="card shadow">
-                <div class="card-header bg-info text-white">
-                    <h5 class="card-title mb-0">تعديل الملف الشخصي</h5>
-                </div>
-                <div class="card-body">
-                    <?php if ($error): ?>
-                        <div class="alert alert-danger"><?php echo $error; ?></div>
-                    <?php endif; ?>
-                    
-                    <?php if ($success): ?>
-                        <div class="alert alert-success"><?php echo $success; ?></div>
-                    <?php endif; ?>
+<?php if ($success): ?>
+<div class="alert alert-success"><?php echo $success; ?></div>
+<?php endif; ?>
 
-                    <form method="POST" action="">
-                        <div class="mb-3">
-                            <label class="form-label">الاسم الكامل</label>
-                            <input type="text" name="name" class="form-control" 
-                                   value="<?php echo $user['name']; ?>" required>
-                        </div>
-                        
-                        <div class="mb-3">
-                            <label class="form-label">البريد الإلكتروني</label>
-                            <input type="email" name="email" class="form-control" 
-                                   value="<?php echo $user['email']; ?>" required>
-                        </div>
-                        
-                        <div class="mb-3">
-                            <label class="form-label">كلمة المرور الجديدة (اختياري)</label>
-                            <input type="password" name="password" class="form-control">
-                            <small class="text-muted">اتركه فارغاً إذا لم ترغب في التغيير</small>
-                        </div>
-                        
-                        <button type="submit" name="update_profile" class="btn btn-primary">
-                            حفظ التغييرات
-                        </button>
-                    </form>
-                </div>
-            </div>
-        </div>
+<form method="POST" action="">
+    <div class="mb-3">
+        <label class="form-label">الاسم الكامل</label>
+        <input type="text" name="name" class="form-control" value="<?php echo $user['name']; ?>" required>
     </div>
-</div>
 
-<?php include '../includes/footer.php'; ?>
+    <div class="mb-3">
+        <label class="form-label">البريد الإلكتروني</label>
+        <input type="email" name="email" class="form-control" value="<?php echo $user['email']; ?>" required>
+    </div>
+
+    <div class="mb-3">
+        <label class="form-label">كلمة المرور الجديدة (اختياري)</label>
+        <input type="password" name="password" class="form-control">
+        <small class="text-muted">اتركه فارغاً إذا لم ترغب في التغيير</small>
+    </div>
+
+    <button type="submit" name="update_profile" class="btn btn-primary">
+        حفظ التغييرات
+    </button>
+</form>

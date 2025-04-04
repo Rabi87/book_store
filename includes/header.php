@@ -17,9 +17,10 @@ if (session_status() === PHP_SESSION_NONE) {
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     
     <style>
-        .navbar-brand img { height: 40px; }
+        .navbar-brand img { height: 60px; }
         .nav-link { transition: all 0.3s; }
         .nav-link:hover { transform: translateY(-2px); }
+        .welcome-text { margin-left: 1rem; }
     </style>
 </head>
 <body class="d-flex flex-column min-vh-100">

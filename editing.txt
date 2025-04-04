@@ -327,3 +327,236 @@ includes/header.php	تصميم الهيدر المشترك.
 
 عند الرفض: تُعاد الكمية إلى جدول books.
 //////////////////////////////////////////////////////////////////////////
+
+<?php
+// ملف admin/dashboard.php
+require __DIR__ . '/../includes/config.php';
+require __DIR__ . '/../includes/header.php';
+
+// التحقق من الصلاحيات
+if (!isset($_SESSION['user_id']) ){
+    header("Location: " . BASE_URL . "login.php");
+    exit();
+}
+
+if ($_SESSION['user_type'] != 'admin') {
+    header("Location: " . BASE_URL . "index.php");
+    exit();
+}
+
+
+// جلب جميع طلبات الاستعارة مع تفاصيل المستخدم والكتاب
+$stmt = $conn->prepare("
+    SELECT 
+        br.id AS request_id,
+        u.name AS user_name,
+        b.title AS book_title,
+        br.request_date,
+        br.status 
+    FROM 
+        borrow_requests br
+    JOIN 
+        users u ON br.user_id = u.id
+    JOIN 
+        books b ON br.book_id = b.id
+    ORDER BY 
+        br.request_date DESC
+");
+$stmt->execute();
+$requests = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+
+// دوال مساعدة
+require __DIR__ . '/../includes/functions.php';
+?>
+
+
+<div class="container mt-5">
+    <h2 class="mb-4">لوحة التحكم الإدارية</h2>
+    
+    <!-- إضافة كتاب جديد -->
+    <form action="<?= BASE_URL ?>process.php" method="POST">
+        <div class="row g-3">
+            <div class="col-md-6">
+                <input type="text" name="title" placeholder="عنوان الكتاب" class="form-control" required>
+            </div>
+            <div class="col-md-6">
+                <input type="text" name="author" placeholder="المؤلف" class="form-control" required>
+            </div>
+            <div class="col-md-4">
+                <select name="type" class="form-select" required>
+                    <option value="physical">كتاب فيزيائي</option>
+                    <option value="e-book">كتاب إلكتروني</option>
+                </select>
+            </div>
+            <div class="col-md-4">
+                <input type="number" name="quantity" placeholder="الكمية" class="form-control" required>
+            </div>
+            <div class="col-md-4">
+                <input type="number" step="0.01" name="price" placeholder="السعر" class="form-control" required>
+            </div>
+            <div class="col-12">
+                <button type="submit" name="add_book" class="btn btn-success">
+                    <i class="fas fa-plus-circle me-2"></i>إضافة كتاب
+                </button>
+            </div>
+        </div>
+    </form>
+</div>
+
+
+    <title>لوحة التحكم - طلبات الاستعارة</title>
+</head>
+<body>
+    <div class="container py-5">
+        <h2 class="mb-4">إدارة طلبات الاستعارة</h2>
+        
+        <?php include __DIR__ . '/../includes/alerts.php'; ?>
+
+        <div class="table-responsive">
+            <table class="table table-striped table-hover">
+                <thead class="table-dark">
+                    <tr>
+                        <th>#</th>
+                        <th>المستخدم</th>
+                        <th>الكتاب</th>
+                        <th>تاريخ الطلب</th>
+                        <th>الحالة</th>
+                        <th>الإجراءات</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <?php foreach ($requests as $index => $request): ?>
+                    <tr>
+                        <td><?= $index + 1 ?></td>
+                        <td><?= htmlspecialchars($request['user_name']) ?></td>
+                        <td><?= htmlspecialchars($request['book_title']) ?></td>
+                        <td><?= date('Y/m/d H:i', strtotime($request['request_date'])) ?></td>
+                        <td>
+                            <span class="badge bg-<?= getStatusColor($request['status']) ?>">
+                                <?= getStatusText($request['status']) ?>
+                            </span>
+                        </td>
+                        <td>
+                            <form method="POST" action="<?= BASE_URL ?>admin/process_request.php" class="d-flex gap-2">
+                                <input type="hidden" name="request_id" value="<?= $request['request_id'] ?>">
+                                <select name="action" class="form-select form-select-sm" required>
+                                    <option value="approve" <?= $request['status'] === 'approved' ? 'disabled' : '' ?>>موافقة</option>
+                                    <option value="reject" <?= $request['status'] === 'rejected' ? 'disabled' : '' ?>>رفض</option>
+                                </select>
+                                <button type="submit" class="btn btn-sm btn-primary">
+                                    <i class="fas fa-save"></i>
+                                </button>
+                            </form>
+                        </td>
+                    </tr>
+                    <?php endforeach; ?>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <?php include __DIR__ . '/../includes/footer.php'; ?>
+</body>
+</html>
+
+/////////////////////////////////////////////////////////////////////////////////////////
+
+<?php
+
+require __DIR__ . '/../includes/config.php';
+
+
+// التحقق من تسجيل الدخول
+if (!isset($_SESSION['user_id']) || $_SESSION['user_type'] != 'user') {
+    header("Location: ../login.php");
+    exit();
+}
+
+$user_id = $_SESSION['user_id'];
+$error = $success = '';
+
+// تحديث البيانات
+if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['update_profile'])) {
+    $name = mysqli_real_escape_string($conn, $_POST['name']);
+    $email = mysqli_real_escape_string($conn, $_POST['email']);
+    $password = mysqli_real_escape_string($conn, $_POST['password']);
+    
+    // التحقق من البريد الإلكتروني
+    $check_sql = "SELECT id FROM users WHERE email = '$email' AND id != $user_id";
+    $check_result = $conn->query($check_sql);
+    
+    if ($check_result->num_rows > 0) {
+        $error = "البريد الإلكتروني مسجل مسبقاً";
+    } else {
+        // تحديث كلمة المرور إذا تم إدخالها
+        $password_update = '';
+        if (!empty($password)) {
+            $hashed_password = password_hash($password, PASSWORD_DEFAULT);
+            $password_update = ", password = '$hashed_password'";
+        }
+        
+        $sql = "UPDATE users 
+                SET name = '$name', email = '$email' $password_update 
+                WHERE id = $user_id";
+        
+        if ($conn->query($sql) === TRUE) {
+            $success = "تم تحديث البيانات بنجاح";
+            $_SESSION['user_name'] = $name; // تحديث الجلسة
+        } else {
+            $error = "خطأ في التحديث: " . $conn->error;
+        }
+    }
+}
+
+// جلب البيانات الحالية
+$sql = "SELECT * FROM users WHERE id = $user_id";
+$result = $conn->query($sql);
+$user = $result->fetch_assoc();
+?>
+
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card shadow">
+                <div class="card-header bg-info text-white">
+                    <h5 class="card-title mb-0">تعديل الملف الشخصي</h5>
+                </div>
+                <div class="card-body">
+                    <?php if ($error): ?>
+                        <div class="alert alert-danger"><?php echo $error; ?></div>
+                    <?php endif; ?>
+                    
+                    <?php if ($success): ?>
+                        <div class="alert alert-success"><?php echo $success; ?></div>
+                    <?php endif; ?>
+
+                    <form method="POST" action="">
+                        <div class="mb-3">
+                            <label class="form-label">الاسم الكامل</label>
+                            <input type="text" name="name" class="form-control" 
+                                   value="<?php echo $user['name']; ?>" required>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label class="form-label">البريد الإلكتروني</label>
+                            <input type="email" name="email" class="form-control" 
+                                   value="<?php echo $user['email']; ?>" required>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label class="form-label">كلمة المرور الجديدة (اختياري)</label>
+                            <input type="password" name="password" class="form-control">
+                            <small class="text-muted">اتركه فارغاً إذا لم ترغب في التغيير</small>
+                        </div>
+                        
+                        <button type="submit" name="update_profile" class="btn btn-primary">
+                            حفظ التغييرات
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+///////////////////////////////////////////////////////////////////////////////////

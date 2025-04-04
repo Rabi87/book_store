@@ -1,3 +1,4 @@
+
 <?php
 // ملف admin/dashboard.php
 require __DIR__ . '/../includes/config.php';
@@ -128,4 +129,3 @@ require __DIR__ . '/../includes/functions.php';
     <?php include __DIR__ . '/../includes/footer.php'; ?>
 </body>
 </html>
-

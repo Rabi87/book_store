@@ -7,9 +7,15 @@ if (empty($_SESSION['csrf_token'])) {
 error_reporting(E_ALL);
 ini_set('display_errors', 1);
 
-define('BASE_PATH', dirname(__DIR__)); // المسار المادي للجذر
-define('BASE_URL', 'http://' . $_SERVER['HTTP_HOST'] . '/autolibrary/'); // الموقع الأساس
-//echo BASE_URL;
+
+// تعريف الثوابت بشرط عدم وجودها مسبقًا
+if (!defined('BASE_PATH')) {
+    define('BASE_PATH', '/var/www/html/autolibrary/');
+}
+
+if (!defined('BASE_URL')) {
+    define('BASE_URL', 'http://localhost/autolibrary/');
+}
 
 $host = "localhost";
 $user = "rabi";
