@@ -69,7 +69,7 @@ if(isset($_GET['success'])){
 
     <!-- نموذج إضافة كتاب -->
     <h4 class="mt-5">إضافة كتاب جديد</h4>
-    <form action="<?= BASE_URL ?>process.php" method="POST">
+    <form action="<?= BASE_URL ?>process.php" method="POST" enctype="multipart/form-data">
         <div class="row">
             <div class="col-md-6 mb-3">
                 <input type="text" name="title" placeholder="عنوان الكتاب" class="form-control" required>
@@ -82,12 +82,26 @@ if(isset($_GET['success'])){
                     <option value="physical">كتاب فيزيائي</option>
                     <option value="e-book">كتاب إلكتروني</option>
                 </select>
+                <select name="category_id" class="form-select" required>
+    <option value="">اختر التصنيف</option>
+    <?php
+    $categories = $conn->query("SELECT * FROM categories");
+    while ($cat = $categories->fetch_assoc()):
+    ?>
+    <option value="<?= $cat['category_id'] ?>">
+        <?= htmlspecialchars($cat['category_name']) ?>
+    </option>
+    <?php endwhile; ?>
+</select>
             </div>
             <div class="col-md-6 mb-3">
                 <input type="number" name="quantity" placeholder="الكمية" class="form-control" required>
             </div>
             <div class="col-md-6 mb-3">
                 <input type="number" step="0.01" name="price" placeholder="السعر" class="form-control" required>
+            </div>
+            <div class="col-md-6 mb-3">
+                <input type="file" name="cover_image" class="form-control"  required>
             </div>
             <div class="col-md-12">
                 <button type="submit" name="add_book" class="btn btn-primary">إضافة كتاب</button>

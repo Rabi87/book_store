@@ -28,9 +28,37 @@ body {
 }
 
 .card:hover {
-    transform: translateY(-5px);
+    transform: translateY(-1px);
 }
 
 .navbar {
     background-color: var(--primary-color)!important;
+}
+.object-fit-cover {
+    object-fit: cover;
+    object-position: center;
+}
+
+.card {
+    transition: transform 0.3s, box-shadow 0.3s;
+    border-radius: 8px;
+}
+
+.card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 5px 15px rgba(0,0,0,0.15);
+}
+
+@media (max-width: 768px) {
+    .row-cols-lg-6 > .col {
+        flex: 0 0 50%;
+        max-width: 50%;
+    }
+}
+
+@media (max-width: 576px) {
+    .row-cols-lg-6 > .col {
+        flex: 0 0 100%;
+        max-width: 100%;
+    }
 }
