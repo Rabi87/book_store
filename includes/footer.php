@@ -1,6 +1,32 @@
-</main>
+<Footer>
 
-<!-- Footer -->
+</Footer>
+<script src="<?= BASE_URL ?>assets/bootstrap/js/popper.min.js"></script> 
+<script src="<?= BASE_URL ?>assets/bootstrap/js/jquery-3.7.1.min.js"></script> 
+<script src="<?= BASE_URL ?>assets/bootstrap/js/bootstrap.js"></script>   
+</body>
+</html>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<!-- Footer 
 <footer class="text-gold mt-auto py-4" style="background-color:rgb(72, 23, 29) !important;">
     <div class="container">
         <div class="row">
@@ -63,7 +89,7 @@
         </div>
 </footer>
 
-<!-- Scripts -->
+<!-- Scripts 
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
 <script src="https://kit.fontawesome.com/your-fontawesome-kit.js" crossorigin="anonymous"></script>
@@ -71,4 +97,4 @@
 <script src="<?= BASE_URL ?>assets/js/script.js"></script>
 </body>
 
-</html>
+</html> -->
