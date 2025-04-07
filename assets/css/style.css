@@ -90,3 +90,149 @@ body {
     min-width: 100%;
     min-height: 100%;
 }
+
+
+/* القسم اليميني (التحكم) */
+.control-panel {
+    width: 280px;
+    background: var(--primary-color);
+    border-radius: 8px;
+    padding: 20px;
+    overflow-y: auto;
+    height: 100%;
+}
+
+.control-panel h3 {
+    color: #fff;
+    text-align: center;
+    margin-bottom: 25px;
+}
+
+.control-buttons {
+    list-style: none;
+}
+
+.control-button {
+    margin: 12px 0;
+}
+
+.control-button a {
+    display: block;
+    padding: 14px;
+    background: var(--primary-color);
+    color: #ecf0f1;
+    text-decoration: none;
+    border-radius: 6px;
+    transition: 0.3s;
+}
+
+.control-button a:hover {
+    background: #4d041b;
+    transform: translateX(5px);
+}
+
+.control-button a.active {
+    background: #332321;
+}
+
+/* القسم اليساري (المحتوى) */
+.content-panel {
+    flex: 1;
+    background: #fff;
+    border-radius: 8px;
+    padding: 25px;
+    overflow-y: auto;
+    height: 100%;
+    box-shadow: 0 2px 15px rgba(0,0,0,0.1);
+}
+
+/* التجاوب مع الشاشات الصغيرة */
+@media (max-width: 768px) {
+    .dashboard-container {
+        flex-direction: column;
+        height: auto;
+    }
+    
+    .control-panel {
+        width: 100%;
+        height: 300px;
+    }
+    
+    .content-panel {
+        min-height: 500px;
+    }
+}
+
+/* هيكل لوحة التحكم */
+.dashboard-container {
+    display: flex;
+    height: calc(100vh - 120px); /* حساب ارتفاع الصفحة مع مراعاة الهيدر والفوتر */
+    margin-top: 20px;
+    gap: 15px;
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+/* في ملف CSS أو داخل وسم <style> */
+.pagination {
+    margin-top: 20px;
+}
+
+.page-item.active .page-link {
+    background-color: #3498db;
+    border-color: #3498db;
+}
+
+.page-link {
+    color: #3498db;
+}
+
+.page-link:hover {
+    color: #2c3e50;
+}
+
+/* The flip card container - set the width and height to whatever you want. We have added the border property to demonstrate that the flip itself goes out of the box on hover (remove perspective if you don't want the 3D effect */
+.flip-card {
+    background-color: transparent;
+    width: 300px;
+    height: 200px;
+    border: 1px solid #f1f1f1;
+    perspective: 1000px; /* Remove this if you don't want the 3D effect */
+  }
+  
+  /* This container is needed to position the front and back side */
+  .flip-card-inner {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    text-align: center;
+    transition: transform 0.8s;
+    transform-style: preserve-3d;
+  }
+  
+  /* Do an horizontal flip when you move the mouse over the flip box container */
+  .flip-card:hover .flip-card-inner {
+    transform: rotateY(180deg);
+  }
+  
+  /* Position the front and back side */
+  .flip-card-front, .flip-card-back {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    -webkit-backface-visibility: hidden; /* Safari */
+    backface-visibility: hidden;
+  }
+  
+  /* Style the front side (fallback if image is missing) */
+  .flip-card-front {
+    background-color: #bbb;
+    color: black;
+  }
+  
+  /* Style the back side */
+  .flip-card-back {
+    background-color: dodgerblue;
+    color: white;
+    transform: rotateY(180deg);
+  }

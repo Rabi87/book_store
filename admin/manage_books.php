@@ -1,7 +1,12 @@
 <?php
+
+error_reporting(E_ALL);
+ini_set('display_errors', 1);
+ini_set('display_startup_errors', 1);
+session_start();
 // ملف admin/dashboard.php
 require __DIR__ . '/../includes/config.php';
-require __DIR__ . '/../includes/header.php';
+
 
 // التحقق من الصلاحيات
 if (!isset($_SESSION['user_id']) ){
@@ -14,25 +19,79 @@ if ($_SESSION['user_type'] != 'admin') {
     exit();
 }
 
-// معالجة حذف الكتاب
-if(isset($_GET['delete'])){
-    $book_id = $_GET['delete'];
-    $sql = "DELETE FROM books WHERE id = $book_id";
-    
-    if($conn->query($sql) === TRUE){
-        $success = "تم حذف الكتاب بنجاح";
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// معالجة حذف الكتاب (التحديث النهائي)
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+if (isset($_GET['delete'])) {
+    try {
+        // تحويل المُعرف إلى عدد صحيح
+        $book_id = (int)$_GET['delete'];
+        
+        // 1. التحقق من وجود استعارات مرتبطة
+        $stmt = $conn->prepare("SELECT COUNT(*) FROM borrow_requests WHERE book_id = ?");
+        $stmt->bind_param("i", $book_id);
+        $stmt->execute();
+        $borrow_count = $stmt->get_result()->fetch_row()[0];
+        
+        if ($borrow_count > 0) {
+            throw new Exception("❌ لا يمكن حذف الكتاب بسبب وجود طلبات استعارة مرتبطة به!");
+        }
+
+        // 2. حذف الكتاب
+        $stmt = $conn->prepare("DELETE FROM books WHERE id = ?");
+        $stmt->bind_param("i", $book_id);
+        
+        if ($stmt->execute()) {
+            $_SESSION['success'] = "✅ تم حذف الكتاب بنجاح!";
+        } else {
+            throw new Exception("❌ فشل في الحذف: " . $conn->error);
+        }
+        
+    } catch (Exception $e) {
+        $_SESSION['error'] = $e->getMessage();
     }
+    
+    // إعادة التوجيه إلى نفس الصفحة
+    header("Location: manage_books.php");
+    exit();
+}
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// عرض الرسائل (مُحدَّث)
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+if (isset($_SESSION['success'])) {
+    echo '<div class="alert alert-success">' . $_SESSION['success'] . '</div>';
+    unset($_SESSION['success']);
+}
+
+if (isset($_SESSION['error'])) {
+    echo '<div class="alert alert-danger">' . $_SESSION['error'] . '</div>';
+    unset($_SESSION['error']);
 }
 
 // عرض رسائل النجاح/الخطأ
 if(isset($_GET['success'])){
     echo '<div class="alert alert-success">'.$_GET['success'].'</div>';
 }
+
+// إعداد الترقيم
+$records_per_page = 10;
+$current_page = isset($_GET['page']) ? (int)$_GET['page'] : 1;
+$current_page = max(1, $current_page);
+$offset = ($current_page - 1) * $records_per_page;
+
+// جلب عدد السجلات الكلي
+$result = $conn->query("SELECT COUNT(*) AS total FROM books");
+$row = $result->fetch_assoc();
+$total_books = $row['total'];
+$total_pages = ceil($total_books / $records_per_page);
+
+// جلب البيانات الحالية
+$sql = "SELECT * FROM books LIMIT $records_per_page OFFSET $offset";
+$result = $conn->query($sql);
 ?>
 
 <div class="container mt-5">
-    <h2 class="mb-4">إدارة الكتب</h2>
-    
     <!-- جدول عرض الكتب -->
     <table class="table table-striped">
         <thead>
@@ -66,6 +125,27 @@ if(isset($_GET['success'])){
             ?>
         </tbody>
     </table>
+
+
+
+    <!-- روابط الترقيم -->
+    <div class="pagination">
+        <?php if ($current_page > 1): ?>
+            <a href="?page=<?php echo $current_page - 1; ?>">السابق</a>
+        <?php endif; ?>
+
+        <?php for ($i = 1; $i <= $total_pages; $i++): ?>
+            <a href="?page=<?php echo $i; ?>" <?php echo ($i == $current_page) ? 'class="active"' : ''; ?>>
+                <?php echo $i; ?>
+            </a>
+        <?php endfor; ?>
+
+        <?php if ($current_page < $total_pages): ?>
+            <a href="?page=<?php echo $current_page + 1; ?>">التالي</a>
+        <?php endif; ?>
+    </div>
+</div>
+
 
     <!-- نموذج إضافة كتاب -->
     <h4 class="mt-5">إضافة كتاب جديد</h4>

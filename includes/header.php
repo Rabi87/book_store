@@ -78,17 +78,13 @@ if (session_status() === PHP_SESSION_NONE) {
 
                     <li class="nav-item">
                         <a class="nav-link"
-                            href="<?= BASE_URL ?><?= ($_SESSION['user_type'] == 'admin') ? 'admin/dashboard.php' : 'user/dashboard.php' ?>">
+                            href="<?= BASE_URL ?><?= ($_SESSION['user_type'] == 'admin') ? 'admin/frame.php' : 'user/dashboard.php' ?>">
                             لوحة التحكم
                         </a>
                     </li>
 
-                    <li class="nav-item">
-                        <a class="nav-link "
-                            href="<?= BASE_URL ?><?= ($_SESSION['user_type'] == 'admin') ?'admin/manage_books.php': 'user/dashboard.php' ?>">الإدارة</a>
-                    </li>
                     </u>
-                    <ul class="navbar-nav ms-auto gap-3">
+                    <ul class="navbar-nav">
 
                         <li class="nav-item">
                             <a class="nav-link" href="<?= BASE_URL ?>logout.php">تسجيل الخروج</a>
@@ -106,7 +102,8 @@ if (session_status() === PHP_SESSION_NONE) {
                     <?php if(isset($_SESSION['user_id'])): ?>
                     <div class="text-warning me-3">
                         <span class="badge bg-light text-dark ms-2">
-                            <?= htmlspecialchars($_SESSION['user_name']) ?></span>
+                            <?= htmlspecialchars($_SESSION['user_name']) ?>
+                        </span>
                         <span class="badge bg-light text-dark ms-2">
                             <?= ($_SESSION['user_type'] == 'admin') ? 'مدير' : 'مستخدم' ?>
                         </span>

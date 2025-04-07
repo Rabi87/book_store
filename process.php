@@ -64,7 +64,7 @@ if(isset($_POST['login'])){
             $_SESSION['user_type'] = $user['user_type'];
             $_SESSION['created_at'] = $user['created_at']; // 
             // التوجيه الصحيح
-            header("Location: " . BASE_URL . ($user['user_type'] == 'admin' ? 'admin/dashboard.php' : 'user/dashboard.php'));
+            header("Location: " . BASE_URL . ($user['user_type'] == 'admin' ? 'admin/frame.php' : 'user/dashboard.php'));
             exit();
         }
     }    
@@ -126,7 +126,7 @@ if (isset($_POST['add_book']) && isAdmin()) {
             $_SESSION['error'] = "فشل في إضافة الكتاب!";
 
         }        
-        header("Location: " . BASE_URL . "admin/manage_books.php");
+        header("Location: " . BASE_URL . "admin/frame.php");
         exit();        
     } catch (Exception $e) {
         error_log("Add Book Error: " . $e->getMessage());
@@ -135,6 +135,47 @@ if (isset($_POST['add_book']) && isAdmin()) {
         exit();
     }
 }
+
+// معالجة تحديث الكتاب
+if (isset($_POST['update_book']) && isAdmin()) {
+    try {
+        $book_id = (int)$_POST['book_id'];
+        $title = htmlspecialchars($_POST['title']);
+        $author = htmlspecialchars($_POST['author']);
+        $type = in_array($_POST['type'], ['physical', 'e-book']) ? $_POST['type'] : 'physical';
+        $quantity = (int)$_POST['quantity'];
+        $price = (float)$_POST['price'];
+        $category_id = (int)$_POST['category_id'];
+
+        $stmt = $conn->prepare("
+            UPDATE books SET 
+            title = ?, 
+            author = ?, 
+            type = ?, 
+            quantity = ?, 
+            price = ?, 
+            category_id = ? 
+            WHERE id = ?
+        ");
+        
+        $stmt->bind_param("sssidii", $title, $author, $type, $quantity, $price, $category_id, $book_id);
+        
+        if ($stmt->execute()) {
+            $_SESSION['success'] = "تم تحديث الكتاب بنجاح!";
+        } else {
+            $_SESSION['error'] = "فشل في التحديث!";
+        }
+        
+        header("Location: " . BASE_URL . "admin/frame.php");
+        exit();
+        
+    } catch (Exception $e) {
+        error_log("Update Error: " . $e->getMessage());
+        $_SESSION['error'] = "حدث خطأ أثناء التحديث";
+        header("Location: " . BASE_URL . "admin/manage_books.php");
+        exit();
+    }}
+
 // معالجة طلب الاستعارة
 if(isset($_POST['borrow_book'])) {
     try 
