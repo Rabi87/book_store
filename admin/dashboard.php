@@ -1,6 +1,6 @@
 
 <?php
-session_start();
+
 // ملف admin/dashboard.php
 require __DIR__ . '/../includes/config.php';
 
@@ -15,9 +15,6 @@ if ($_SESSION['user_type'] != 'admin') {
     header("Location: " . BASE_URL . "index.php");
     exit();
 }
-
-
-
 
 // جلب جميع طلبات الاستعارة مع تفاصيل المستخدم والكتاب
 $stmt = $conn->prepare("
@@ -91,6 +88,5 @@ require __DIR__ . '/../includes/functions.php';
         </div>
     </div>
 
-    <?php include __DIR__ . '/../includes/footer.php'; ?>
 </body>
 </html>

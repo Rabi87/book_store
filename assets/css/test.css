@@ -1,0 +1,155 @@
+
+/* تنسيقات أساسية */
+:root {
+    --primary-dark: #000000;
+    --secondary-dark: #1a1a1a;
+    --dark-gray: #333333;
+    --medium-gray: #4d4d4d;
+    --light-gray: #666666;
+}
+
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+    font-family: 'Tajawal', sans-serif;
+}
+
+body {
+    background: var(--primary-dark);
+    color: #e6e6e6;
+    direction: rtl;
+}
+
+/* تحسين التخطيط العام */
+.container_user {
+    display: flex;
+    margin-top: 60px;
+}
+
+/* الشريط الجانبي الثابت */
+.sidebar {
+    width: 280px;
+    height: 100vh;
+    position: fixed;
+    right: 0;
+    top: 0;
+    background: var(--secondary-dark);
+    padding: 20px;
+    overflow-y: auto;
+    box-shadow: 3px 0 10px rgba(0,0,0,0.5);
+}
+
+.sidebar-button {
+    display: block;
+    width: 100%;
+    padding: 15px;
+    margin: 10px 0;
+    background: var(--dark-gray);
+    color: #fff;
+    border: 1px solid var(--medium-gray);
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.3s;
+}
+
+.sidebar-button:hover,
+.sidebar-button.active {
+    background: var(--medium-gray);
+    border-color: var(--light-gray);
+    transform: translateX(-5px);
+}
+
+/* منطقة المحتوى الرئيسية */
+.content-area {
+    flex: 1;
+    margin-right: 300px;
+    padding: 30px;
+    min-height: 100vh;
+    background: var(--secondary-dark);
+}
+
+/* تحسين الجداول */
+table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 25px 0;
+    background: var(--dark-gray);
+    border-radius: 10px;
+    overflow: hidden;
+}
+
+th {
+    background: var(--primary-dark);
+    padding: 18px;
+    text-align: right;
+    border-bottom: 3px solid var(--medium-gray);
+}
+
+td {
+    padding: 15px;
+    border-bottom: 1px solid var(--medium-gray);
+    transition: background 0.2s;
+}
+
+tr:hover td {
+    background: var(--medium-gray);
+}
+
+/* تحسين النماذج */
+.modal-content {
+    background: var(--secondary-dark);
+    border: 1px solid var(--medium-gray);
+    border-radius: 12px;
+}
+
+.form-group input,
+.form-group textarea {
+    background: var(--dark-gray);
+    border: 1px solid var(--medium-gray);
+    color: #fff;
+    padding: 12px;
+    margin: 8px 0;
+}
+
+/* شريط التمرير المخصص */
+::-webkit-scrollbar {
+    width: 8px;
+}
+
+::-webkit-scrollbar-track {
+    background: var(--secondary-dark);
+}
+
+::-webkit-scrollbar-thumb {
+    background: var(--medium-gray);
+    border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: var(--light-gray);
+}
+
+/* تحسينات إضافية */
+.profile-info {
+    background: var(--dark-gray);
+    padding: 25px;
+    border-radius: 10px;
+    border: 1px solid var(--medium-gray);
+}
+
+.page-title {
+    border-bottom: 2px solid var(--medium-gray);
+    padding-bottom: 15px;
+    margin-bottom: 25px;
+    color: #fff;
+}
+
+/* التنسيق الداخلي للعناصر */
+.content-page {
+    padding: 25px;
+    background: var(--dark-gray);
+    border-radius: 12px;
+    margin-bottom: 30px;
+    border: 1px solid var(--medium-gray);
+}

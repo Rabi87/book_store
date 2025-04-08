@@ -1,9 +1,8 @@
 <?php
-
 error_reporting(E_ALL);
 ini_set('display_errors', 1);
 ini_set('display_startup_errors', 1);
-session_start();
+
 // ملف admin/dashboard.php
 require __DIR__ . '/../includes/config.php';
 
@@ -190,5 +189,5 @@ $result = $conn->query($sql);
     </form>
 </div>
 
-<?php require __DIR__ . '/../includes/footer.php' ?>
+
 

@@ -20,6 +20,7 @@ require __DIR__ . '/includes/header.php';
                         </div>
                         <button type="submit" name="login" class="btn btn-primary">دخول</button>
                     </form>
+                    <p class="auth-link">ليس لديك حساب؟ <a href="<?= BASE_URL ?>register.php" onclick="showRegister()">انشاء حساب</a></p>
                 </div>
             </div>
         </div>

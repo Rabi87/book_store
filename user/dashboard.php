@@ -1,7 +1,6 @@
 <?php
 require __DIR__ . '/../includes/config.php';
 require __DIR__ . '/../includes/user_auth.php';
-
 // جلب البيانات
 $user_id = $_SESSION['user_id'];
 
