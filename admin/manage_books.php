@@ -1,4 +1,7 @@
 <?php
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
 error_reporting(E_ALL);
 ini_set('display_errors', 1);
 ini_set('display_startup_errors', 1);
@@ -23,20 +26,29 @@ if ($_SESSION['user_type'] != 'admin') {
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 if (isset($_GET['delete'])) {
     try {
-        // تحويل المُعرف إلى عدد صحيح
         $book_id = (int)$_GET['delete'];
         
-        // 1. التحقق من وجود استعارات مرتبطة
-        $stmt = $conn->prepare("SELECT COUNT(*) FROM borrow_requests WHERE book_id = ?");
+        // 1. التحقق من وجود طلبات موافق عليها أو قيد الانتظار فقط
+        $stmt = $conn->prepare("
+            SELECT COUNT(*) 
+            FROM borrow_requests 
+            WHERE book_id = ? 
+            AND status IN ('approved', 'pending') -- فقط الطلبات الفعالة
+        ");
         $stmt->bind_param("i", $book_id);
         $stmt->execute();
-        $borrow_count = $stmt->get_result()->fetch_row()[0];
+        $active_requests = $stmt->get_result()->fetch_row()[0];
         
-        if ($borrow_count > 0) {
-            throw new Exception("❌ لا يمكن حذف الكتاب بسبب وجود طلبات استعارة مرتبطة به!");
+        if ($active_requests > 0) {
+            throw new Exception("❌ لا يمكن حذف الكتاب بسبب وجود طلبات استعارة فعالة (موافق عليها أو قيد المراجعة)!");
         }
 
-        // 2. حذف الكتاب
+        // 2. حذف جميع الطلبات المرفوضة أولاً (اختياري)
+        $stmt = $conn->prepare("DELETE FROM borrow_requests WHERE book_id = ? AND status = 'rejected'");
+        $stmt->bind_param("i", $book_id);
+        $stmt->execute();
+
+        // 3. حذف الكتاب
         $stmt = $conn->prepare("DELETE FROM books WHERE id = ?");
         $stmt->bind_param("i", $book_id);
         
@@ -49,10 +61,7 @@ if (isset($_GET['delete'])) {
     } catch (Exception $e) {
         $_SESSION['error'] = $e->getMessage();
     }
-    
-    // إعادة التوجيه إلى نفس الصفحة
-    header("Location: manage_books.php");
-    exit();
+
 }
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -91,8 +100,9 @@ $result = $conn->query($sql);
 ?>
 
 <div class="container mt-5">
+    <?php include __DIR__ . '/../includes/alerts.php'; ?>
     <!-- جدول عرض الكتب -->
-    <table class="table table-striped">
+     <table class="table table-striped">
         <thead>
             <tr>
                 <th>العنوان</th>
@@ -122,72 +132,65 @@ $result = $conn->query($sql);
                 echo '</tr>';
             }
             ?>
-        </tbody>
+            </tbody>
     </table>
-
-
-
     <!-- روابط الترقيم -->
     <div class="pagination">
         <?php if ($current_page > 1): ?>
-            <a href="?page=<?php echo $current_page - 1; ?>">السابق</a>
+        <a href="?page=<?php echo $current_page - 1; ?>">السابق</a>
         <?php endif; ?>
 
         <?php for ($i = 1; $i <= $total_pages; $i++): ?>
-            <a href="?page=<?php echo $i; ?>" <?php echo ($i == $current_page) ? 'class="active"' : ''; ?>>
-                <?php echo $i; ?>
-            </a>
+        <a href="?page=<?php echo $i; ?>" <?php echo ($i == $current_page) ? 'class="active"' : ''; ?>>
+            <?php echo $i; ?>
+        </a>
         <?php endfor; ?>
 
         <?php if ($current_page < $total_pages): ?>
-            <a href="?page=<?php echo $current_page + 1; ?>">التالي</a>
+        <a href="?page=<?php echo $current_page + 1; ?>">التالي</a>
         <?php endif; ?>
     </div>
 </div>
 
 
-    <!-- نموذج إضافة كتاب -->
-    <h4 class="mt-5">إضافة كتاب جديد</h4>
-    <form action="<?= BASE_URL ?>process.php" method="POST" enctype="multipart/form-data">
-        <div class="row">
-            <div class="col-md-6 mb-3">
-                <input type="text" name="title" placeholder="عنوان الكتاب" class="form-control" required>
-            </div>
-            <div class="col-md-6 mb-3">
-                <input type="text" name="author" placeholder="المؤلف" class="form-control" required>
-            </div>
-            <div class="col-md-6 mb-3">
-                <select name="type" class="form-select" required>
-                    <option value="physical">كتاب فيزيائي</option>
-                    <option value="e-book">كتاب إلكتروني</option>
-                </select>
-                <select name="category_id" class="form-select" required>
-    <option value="">اختر التصنيف</option>
-    <?php
+<!-- نموذج إضافة كتاب -->
+<h4 class="mt-5">إضافة كتاب جديد</h4>
+<form action="<?= BASE_URL ?>process.php" method="POST" enctype="multipart/form-data">
+    <div class="row">
+        <div class="col-md-6 mb-3">
+            <input type="text" name="title" placeholder="عنوان الكتاب" class="form-control" required>
+        </div>
+        <div class="col-md-6 mb-3">
+            <input type="text" name="author" placeholder="المؤلف" class="form-control" required>
+        </div>
+        <div class="col-md-6 mb-3">
+            <select name="type" class="form-select" required>
+                <option value="physical">كتاب فيزيائي</option>
+                <option value="e-book">كتاب إلكتروني</option>
+            </select>
+            <select name="category_id" class="form-select" required>
+                <option value="">اختر التصنيف</option>
+                <?php
     $categories = $conn->query("SELECT * FROM categories");
     while ($cat = $categories->fetch_assoc()):
     ?>
-    <option value="<?= $cat['category_id'] ?>">
-        <?= htmlspecialchars($cat['category_name']) ?>
-    </option>
-    <?php endwhile; ?>
-</select>
-            </div>
-            <div class="col-md-6 mb-3">
-                <input type="number" name="quantity" placeholder="الكمية" class="form-control" required>
-            </div>
-            <div class="col-md-6 mb-3">
-                <input type="number" step="0.01" name="price" placeholder="السعر" class="form-control" required>
-            </div>
-            <div class="col-md-6 mb-3">
-                <input type="file" name="cover_image" class="form-control"  required>
-            </div>
-            <div class="col-md-12">
-                <button type="submit" name="add_book" class="btn btn-primary">إضافة كتاب</button>
-            </div>
+                <option value="<?= $cat['category_id'] ?>">
+                    <?= htmlspecialchars($cat['category_name']) ?>
+                </option>
+                <?php endwhile; ?>
+            </select>
         </div>
-    </form>
-</div>
-
-
-
+        <div class="col-md-6 mb-3">
+            <input type="number" name="quantity" placeholder="الكمية" class="form-control" required>
+        </div>
+        <div class="col-md-6 mb-3">
+            <input type="number" step="0.01" name="price" placeholder="السعر" class="form-control" required>
+        </div>
+        <div class="col-md-6 mb-3">
+            <input type="file" name="cover_image" class="form-control" required>
+        </div>
+        <div class="col-md-12">
+            <button type="submit" name="add_book" class="btn btn-primary">إضافة كتاب</button>
+        </div>
+    </div>
+</form>

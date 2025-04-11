@@ -58,6 +58,32 @@ $user = $result->fetch_assoc();
 <?php if ($success): ?>
 <div class="alert alert-success"><?php echo $success; ?></div>
 <?php endif; ?>
+<div class="container mt-5">
+    <h3>الإشعارات</h3>
+    <?php
+    $stmt = $conn->prepare("
+        SELECT * FROM notifications 
+        WHERE user_id = ? 
+        ORDER BY created_at DESC
+    ");
+    $stmt->bind_param("i", $_SESSION['user_id']);
+    $stmt->execute();
+    $notifications = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+    ?>
+    
+    <?php foreach ($notifications as $notif): ?>
+    <div class="card mb-2 <?= $notif['is_read'] ? '' : 'border-primary' ?>">
+        <div class="card-body">
+            <p><?= $notif['message'] ?></p>
+            <?php if ($notif['link']): ?>
+            <a href="<?= $notif['link'] ?>" class="btn btn-sm btn-outline-primary">
+                الانتقال <i class="fas fa-arrow-left"></i>
+            </a>
+            <?php endif; ?>
+        </div>
+    </div>
+    <?php endforeach; ?>
+</div>
 
 <form method="POST" action="">
     <div class="mb-3">

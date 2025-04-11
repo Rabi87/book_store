@@ -409,3 +409,33 @@ body {
     font-size: 14px;
     margin: 0;
 }
+.form-check-input.position-static {
+    margin-left: 0.5em !important;
+    margin-right: auto !important;
+}
+.input-group {
+    position: relative;
+}
+
+.btn-outline-secondary {
+    padding: 0.375rem 0.75rem;
+    transform: translateY(-50%);
+    top: 50%;
+    right: 1px;
+}
+
+
+.status-pending {
+    color: orange;
+    font-weight: bold;
+}
+
+.status-approved {
+    color: green;
+    font-weight: bold;
+}
+
+.status-rejected {
+    color: red;
+    font-weight: bold;
+}

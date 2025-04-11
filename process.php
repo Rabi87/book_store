@@ -2,7 +2,9 @@
 // يجب أن يكون هذا أول محتوى في الملف
 session_start();
 // تعريف الثوابت الأساسية
+require __DIR__ . '/includes/db_logger.php'; // <-- إضافة هذا السطر
 require __DIR__ . '/includes/config.php';
+
 // توليد CSRF Token إذا لم يكن موجود
 if (empty($_SESSION['csrf_token'])) {
     $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
@@ -48,29 +50,53 @@ if (isset($_POST['register'])) {
 }
 // تسجيل الدخول
 if(isset($_POST['login'])){
-    $email = $conn->real_escape_string($_POST['email']);
-    $password = $_POST['password'];   
-    $stmt = $conn->prepare("SELECT * FROM users WHERE email = ?");
-    $stmt->bind_param("s", $email);
+    $name = $conn->real_escape_string($_POST['name']);
+    $password = $_POST['password'];
+    $stmt = $conn->prepare("SELECT * FROM users WHERE name = ?");
+    $stmt->bind_param("s", $name);
     $stmt->execute();
-    $result = $stmt->get_result();   
+    $result = $stmt->get_result();
+    
     if($result->num_rows > 0){
         $user = $result->fetch_assoc();
         if(password_verify($password, $user['password'])){
-            // تخزين جميع البيانات في الجلسة
+            // تخزين الجلسة
             $_SESSION['user_id'] = $user['id'];
             $_SESSION['user_name'] = $user['name'];
-            $_SESSION['user_email'] = $user['email']; // <-- إضافة البريد
+            $_SESSION['user_email'] = $user['email'];
             $_SESSION['user_type'] = $user['user_type'];
-            $_SESSION['created_at'] = $user['created_at']; // 
-            // التوجيه الصحيح
-            header("Location: " . BASE_URL . ($user['user_type'] == 'admin' ? 'admin/frame.php' : 'user/dashboard.php'));
+            $_SESSION['created_at'] = $user['created_at'];
+            
+            DatabaseLogger::log(
+                'login_success', 
+                $_SESSION['user_name'], 
+                'تم تسجيل الدخول بنجاح' 
+            );
+            
+            header("Location: " . BASE_URL . ($user['user_type'] == 'admin' ? 'admin/dashboard.php' : 'user/dashboard.php'));
+            exit();
+        } else {
+            // حالة كلمة المرور الخاطئة
+            $_SESSION['error'] = "بيانات الدخول غير صحيحة";
+            DatabaseLogger::log(
+                'login_failed', 
+                $name, // استخدام المتغير $name بدلًا من $_POST['user_name']
+                'كلمة المرور خاطئة'
+            );
+            header("Location: " . BASE_URL . "login.php");
             exit();
         }
-    }    
-    $_SESSION['error'] = "بيانات الدخول غير صحيحة!";
-    header("Location: " . BASE_URL . "loging.php");
-    exit();
+    } else {  
+        // حالة عدم وجود المستخدم
+        $_SESSION['error'] = "بيانات الدخول غير صحيحة";
+        DatabaseLogger::log(
+            'login_failed', 
+            $name, // استخدام المتغير $name
+            'المستخدم غير موجود'
+        );  
+        header("Location: " . BASE_URL . "login.php");
+        exit();
+    }
 }
 // معالجة إضافة الكتب (للمسؤولين فقط)
 if (isset($_POST['add_book']) && isAdmin()) {
@@ -126,7 +152,7 @@ if (isset($_POST['add_book']) && isAdmin()) {
             $_SESSION['error'] = "فشل في إضافة الكتاب!";
 
         }        
-        header("Location: " . BASE_URL . "admin/frame.php");
+        header("Location: " . BASE_URL . "admin/dashboard.php");
         exit();        
     } catch (Exception $e) {
         error_log("Add Book Error: " . $e->getMessage());
@@ -166,7 +192,7 @@ if (isset($_POST['update_book']) && isAdmin()) {
             $_SESSION['error'] = "فشل في التحديث!";
         }
         
-        header("Location: " . BASE_URL . "admin/frame.php");
+        header("Location: " . BASE_URL . "admin/dashboard.php");
         exit();
         
     } catch (Exception $e) {

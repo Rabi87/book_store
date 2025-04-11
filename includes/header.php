@@ -22,9 +22,8 @@ if (session_status() === PHP_SESSION_NONE) {
 <body class="d-flex flex-column min-vh-100">
     <div class="container">
         <nav class="navbar navbar-expand-lg" style="
-    background: linear-gradient(to right, #f8f9fa, #e9ecef);
-    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-">
+                    background: linear-gradient(to right, #f8f9fa, #e9ecef);
+                    box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
             <div class="container-fluid">
                 <!-- الشعار على اليسار -->
                 <a class="navbar-brand" href="<?= BASE_URL ?>index.php">
@@ -37,8 +36,6 @@ if (session_status() === PHP_SESSION_NONE) {
                     aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
                     <span class="navbar-toggler-icon"></span>
                 </button>
-
-
                 <!-- العناصر على اليمين -->
                 <div class="collapse navbar-collapse justify-content-end" id="navbarNav">
                     <div class="d-flex align-items-center gap-3">
@@ -80,7 +77,6 @@ if (session_status() === PHP_SESSION_NONE) {
                         </a>
                         <?php endif; ?>
                     </div>
-
                     <script>
                     function toggleDropdown() {
                         const dropdown = document.getElementById('logoutDropdown');
@@ -96,18 +92,14 @@ if (session_status() === PHP_SESSION_NONE) {
                     </script>
                 </div>
         </nav>
-
-
-
         <nav class="navbar navbar-expand-lg navbar-dark sticky-top">
             <div class="container">
 
 
                 </a>
 
-                <button class="navbar-toggler" type="button" data-toggle="collapse"
-                    data-target="#navbarSupportedContent" aria-controls="navbarSupportedContent" aria-expanded="false"
-                    aria-label="Toggle navigation">
+                <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarSupportedContent"
+                    aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
                     <span class="navbar-toggler-icon"></span>
                 </button>
 
@@ -117,20 +109,16 @@ if (session_status() === PHP_SESSION_NONE) {
                         <?php if (isset($_SESSION['user_id'])): ?>
                         <li class="nav-item"> <a class="nav-link" href="#">المنتدى</a> </li>
                         <li class="nav-item"> <a class="nav-link" href="#">التعاملات</a> </li>
-                        <li class="nav-item"> <a class="nav-link"
-                                href="<?= BASE_URL ?><?= ($_SESSION['user_type'] == 'admin') ? 'admin/frame.php' : 'user/dashboard.php' ?>">
-                                لوحة التحكم </a> </li> 
-                      <?php else: ?>
-                        <!-- يمكنك إضافة عناصر أخرى هنا إذا كنت تريد --> <?php endif; ?>
+                        <li class="nav-item"> <a class="nav-link" href="<?= BASE_URL ?>
+                        <?= ($_SESSION['user_type'] == 'admin') ? 'admin/dashboard.php' : 'user/dashboard.php' ?>">
+                                لوحة التحكم </a> </li>
+                        <?php endif; ?>
                     </ul>
                 </div>
             </div>
+          
+        </nav>
     </div>
-    </nav>
-    </div>
-
-
-
 
     <!-- مودال تسجيل الدخول -->
     <div class="modal fade" id="loginModal">
