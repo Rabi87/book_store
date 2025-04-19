@@ -1,155 +1,276 @@
-
-/* تنسيقات أساسية */
-:root {
-    --primary-dark: #000000;
-    --secondary-dark: #1a1a1a;
-    --dark-gray: #333333;
-    --medium-gray: #4d4d4d;
-    --light-gray: #666666;
-}
-
 * {
-    box-sizing: border-box;
     margin: 0;
     padding: 0;
-    font-family: 'Tajawal', sans-serif;
+    box-sizing: border-box;
 }
 
 body {
-    background: var(--primary-dark);
-    color: #e6e6e6;
-    direction: rtl;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    line-height: 1.6;
 }
-
-/* تحسين التخطيط العام */
-.container_user {
+/* تصميم الهيدر */
+.top-nav {
+    background: linear-gradient(to right, #f8f9fa, #464747);
+    color: white;
+    padding: 1rem 2rem;
     display: flex;
-    margin-top: 60px;
+    justify-content: space-between;
+    align-items: center;
+    position: relative;
 }
 
-/* الشريط الجانبي الثابت */
-.sidebar {
-    width: 280px;
-    height: 100vh;
-    position: fixed;
-    right: 0;
-    top: 0;
-    background: var(--secondary-dark);
-    padding: 20px;
-    overflow-y: auto;
-    box-shadow: 3px 0 10px rgba(0,0,0,0.5);
-}
-
-.sidebar-button {
-    display: block;
-    width: 100%;
-    padding: 15px;
-    margin: 10px 0;
-    background: var(--dark-gray);
-    color: #fff;
-    border: 1px solid var(--medium-gray);
-    border-radius: 8px;
+.logo img {
+    vertical-align: middle;
     cursor: pointer;
-    transition: all 0.3s;
+}
+* زر القائمة المنسدلة للجوال */
+.menu-toggle {
+    display: none; /* مخفي افتراضيًا */
+    background: none;
+    border: none;
+    color: white;
+    font-size: 1.5rem;
+    cursor: pointer;
 }
 
-.sidebar-button:hover,
-.sidebar-button.active {
-    background: var(--medium-gray);
-    border-color: var(--light-gray);
-    transform: translateX(-5px);
+/* أيقونة المستخدم مع قائمة منسدلة */
+.user-menu {
+    position: relative;
 }
 
-/* منطقة المحتوى الرئيسية */
-.content-area {
-    flex: 1;
-    margin-right: 300px;
-    padding: 30px;
-    min-height: 100vh;
-    background: var(--secondary-dark);
+.user-toggle {
+    display: flex;
+    align-items: center;
+    background: none;
+    border: none;
+    color: rgb(60, 58, 58);
+    font-size: 1.5rem;
+    cursor: pointer;
 }
 
-/* تحسين الجداول */
-table {
-    width: 100%;
-    border-collapse: collapse;
-    margin: 25px 0;
-    background: var(--dark-gray);
+.user-toggle span {
+    margin-right: 0.5rem;
+    font-size: 1rem;
+}
+
+.dropdown-menu {
+    display: none;
+    position: absolute;
+    left: 100%; /* تغيير من right:0 إلى left:100% */
+    top: 0;
+    padding: 0;
+    margin-left: 10px;
+    border-left: #000 solid 2px;
+    min-width: auto;
+    white-space: nowrap; /* منع تكسر النص */
+    list-style: none;
+    z-index: 100;
+}
+
+.dropdown-menu li {
+    margin: 0.5rem 0;
+}
+
+.dropdown-menu a {
+    color: white;
+    text-decoration: none;
+    padding: 0.5rem 1rem;
+    display: block;
+    transition: background 0.3s;
+}
+
+.dropdown-menu a:hover {
+    background: #555;
+}
+
+/* استجابة */
+@media (max-width: 768px) {
+    .dropdown-menu {
+        right: auto;
+        left: 0;
+    }
+}
+
+.login-icon {
+    color: rgb(4, 4, 4);
+    font-size: 1.5rem;
+    text-decoration: none;
+    transition: color 0.3s;
+}
+
+.login-icon:hover {
+    color: #f9ca24;
+}
+
+/* شريط التنقل الرئيسي */
+.main-nav {
+    background: #444;
+    padding: 1rem 0;
+    position: sticky;
+    top: 0;
+    z-index: 1000;
+}
+
+.main-nav ul {
+    list-style: none;
+    display: flex;
+    justify-content: center;
+    gap: 2rem;
+    margin: 0 auto;
+    padding: 0;
+}
+
+.main-nav a {
+    color: white;
+    text-decoration: none;
+    font-weight: bold;
+    transition: color 0.3s;
+}
+
+.main-nav a:hover {
+    color: #f9ca24;
+}
+
+
+/* استجابة */
+@media (max-width: 768px) {
+    .main-nav ul {
+        flex-direction: column;
+        align-items: center;
+        gap: 1rem;
+    }
+}
+/* قسم البحث */
+.search-section {
+    padding: 2rem;
+    background: #f4f4f4;
+    text-align: center;
+}
+
+.search-container {
+    max-width: 800px;
+    margin: 0 auto;
+    display: flex;
+    gap: 1rem;
+    flex-wrap: wrap;
+    justify-content: center;
+}
+
+.search-box {
+    padding: 0.5rem;
+    width: 300px;
+    border: 2px solid #ddd;
+    border-radius: 5px;
+}
+
+.search-btn {
+    padding: 0.5rem 1.5rem;
+    background: #f9ca24;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: background 0.3s;
+}
+
+.search-btn:hover {
+    background: #f6e58d;
+}
+
+/* عرض الكتب */
+.books-grid {
+    padding: 2rem;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 2rem;
+}
+
+.book-card {
+    border: 1px solid #ddd;
     border-radius: 10px;
     overflow: hidden;
+    transition: transform 0.3s;
 }
 
-th {
-    background: var(--primary-dark);
-    padding: 18px;
-    text-align: right;
-    border-bottom: 3px solid var(--medium-gray);
+.book-card:hover {
+    transform: translateY(-5px);
 }
 
-td {
-    padding: 15px;
-    border-bottom: 1px solid var(--medium-gray);
-    transition: background 0.2s;
+.book-image {
+    height: 20px;
+    background: #f4f4f4;
 }
 
-tr:hover td {
-    background: var(--medium-gray);
+.book-info {
+    padding: 1rem;
 }
 
-/* تحسين النماذج */
-.modal-content {
-    background: var(--secondary-dark);
-    border: 1px solid var(--medium-gray);
-    border-radius: 12px;
+.book-title {
+    font-size: 1.2rem;
+    margin-bottom: 0.5rem;
 }
 
-.form-group input,
-.form-group textarea {
-    background: var(--dark-gray);
-    border: 1px solid var(--medium-gray);
-    color: #fff;
-    padding: 12px;
-    margin: 8px 0;
+/* الفوتر */
+footer {
+    background: #333;
+    color: white;
+    padding: 2rem;
+    text-align: center;
+    margin-top: 2rem;
 }
 
-/* شريط التمرير المخصص */
-::-webkit-scrollbar {
-    width: 8px;
+footer a {
+    color: #f9ca24;
+    margin: 0 0.5rem;
+    text-decoration: none;
 }
 
-::-webkit-scrollbar-track {
-    background: var(--secondary-dark);
-}
+/* استجابة */
+@media (max-width: 768px) {
+    .main-nav ul {
+        flex-direction: column;
+        align-items: center;
+        gap: 1rem;
+    }
 
-::-webkit-scrollbar-thumb {
-    background: var(--medium-gray);
-    border-radius: 4px;
-}
+    .search-container {
+        flex-direction: column;
+        gap: 1rem;
+    }
 
-::-webkit-scrollbar-thumb:hover {
-    background: var(--light-gray);
+    .search-box {
+        width: 100%;
+    }
 }
+/* استجابة للجوال */
+@media (max-width: 768px) {
+    .menu-toggle {
+        display: block; /* ظهور زر القائمة المنسدلة */
+    }
 
-/* تحسينات إضافية */
-.profile-info {
-    background: var(--dark-gray);
-    padding: 25px;
-    border-radius: 10px;
-    border: 1px solid var(--medium-gray);
+    .main-nav ul {
+        display: none; /* إخفاء الروابط افتراضيًا */
+        flex-direction: column;
+        align-items: center;
+        gap: 1rem;
+        background: #444;
+        position: absolute;
+        top: 100%;
+        left: 0;
+        width: 100%;
+        padding: 1rem 0;
+    }
+
+    .main-nav ul.active {
+        display: flex; /* عرض الروابط عند النقر على زر القائمة */
+    }
 }
-
-.page-title {
-    border-bottom: 2px solid var(--medium-gray);
-    padding-bottom: 15px;
-    margin-bottom: 25px;
-    color: #fff;
-}
-
-/* التنسيق الداخلي للعناصر */
-.content-page {
-    padding: 25px;
-    background: var(--dark-gray);
-    border-radius: 12px;
-    margin-bottom: 30px;
-    border: 1px solid var(--medium-gray);
+.card-img{
+    width: 105px;
+    /* العرض الثابت */
+    height: 200px;
+    background-color: #f6e58d;
+    /* الارتفاع الثابت */
+    overflow: hidden;
+    margin: 0 auto;
+    /* توسيط الصورة أفقيًا */
 }

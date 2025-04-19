@@ -1664,4 +1664,771 @@ if (session_status() === PHP_SESSION_NONE) {
     </div>
 
     <main class="flex-grow-1 container my-5">
+
+
+    ------------------------------------------------------------------------
+
+    <?php
+// ملف index.php
+session_start();
+require __DIR__ . '/includes/config.php';
+require __DIR__ . '/includes/header.php';
+// معالجة معاملات البحث والتصفية
+$search = $_GET['search'] ?? '';
+$category_filter = $_GET['category'] ?? 'all';
+// بناء الاستعلام الأساسي مع شروط التصفية
+$base_query = "
+    SELECT 
+        books.*, 
+        categories.category_name 
+    FROM books
+    INNER JOIN categories 
+        ON books.category_id = categories.category_id
+    WHERE 1=1
+    AND (books.type = 'physical' AND books.quantity > 0 OR books.type = 'e-book')
+";
+// إضافة شروط البحث
+$params = [];
+$types = '';
+if (!empty($search)) {
+    $base_query .= " AND (books.title LIKE ? OR books.author LIKE ?)";
+    $search_term = "%$search%";
+    $params[] = $search_term;
+    $params[] = $search_term;
+    $types .= 'ss';
+}
+// إضافة فلتر التصنيف
+if ($category_filter !== 'all') {
+    $base_query .= " AND categories.category_id = ?";
+    $params[] = $category_filter;
+    $types .= 'i';
+}
+// تقسيم الاستعلام حسب النوع
+$physical_query = $base_query . " AND books.type = 'physical'";
+$e_book_query = $base_query . " AND books.type = 'e-book'";
+
+// تنفيذ الاستعلامات
+$stmt_physical = $conn->prepare($physical_query);
+if ($types !== '') $stmt_physical->bind_param($types, ...$params);
+$stmt_physical->execute();
+$physical_books = $stmt_physical->get_result();
+
+$stmt_e = $conn->prepare($e_book_query);
+if ($types !== '') $stmt_e->bind_param($types, ...$params);
+$stmt_e->execute();
+$e_books = $stmt_e->get_result();
+?>
+<!-- قسم الكتب الفيزيائية -->
+<div class="container py-5">
+    <!-- العنوان الرئيسي -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <h2 class="fw-bold border-bottom pb-3">الكتب الفيزيائية</h2>
+            <div class="d-flex gap-2">
+                <!-- شريط البحث -->
+                <form class="w-100" method="GET" action="">
+                    <div class="input-group">
+                        <input type="text" name="search" class="form-control"
+                            placeholder="ابحث عن كتاب، مؤلف، أو تصنيف..." value="<?= htmlspecialchars($search) ?>">
+
+                    </div>
+
+
+                    <!-- تصنيفات الكتب -->
+                    <div class="col-md-3 mb-3">
+                        <select name="category" class="form-select">
+                            <option value="all">جميع التصنيفات</option>
+                            <?php
+                            $categories = $conn->query("SELECT * FROM categories");
+                            while ($cat = $categories->fetch_assoc()):
+                            ?>
+                            <option value="<?= $cat['category_id'] ?>"
+                                <?= ($category_filter == $cat['category_id']) ? 'selected' : '' ?>>
+                                <?= htmlspecialchars($cat['category_name']) ?>
+                            </option>
+                            <?php endwhile; ?>
+                        </select>
+                    </div>
+                    <div class="col-md-1 mb-3">
+                        <button type="submit" class="btn btn-primary w-100">
+                            <i class="fas fa-filter"></i>
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    <?php if($physical_books->num_rows > 0): ?>
+    <div class="row g-4">
+        <!-- إضافة صف واحد يحتوي جميع البطاقات -->
+        <?php while($book = $physical_books->fetch_assoc()): ?>
+        <!-- البطاقة -->
+        <div class="col-6 col-md-4 col-lg-2">
+            <!-- تعديل الأعمدة لعرض 6 بطاقات في الصف -->
+            <div class="card h-100 shadow-sm">
+                <img src="<?= BASE_URL ?>assets/images/books/<?= $book['cover_image'] ?>" class="card-img-top"
+                    alt="غلاف الكتاب" style="height: 200px; object-fit: cover;">
+                <div class="card-body d-flex flex-column">
+                    <h5 class="card-title fs-6"><?= htmlspecialchars($book['title']) ?></h5>
+                    <p class="card-text text-muted small">
+                        <?= htmlspecialchars($book['author']) ?><br>
+                        <?= $book['quantity'] ?><i class="fas fa-box"></i>
+                        <?= htmlspecialchars($book['category_name']) ?>
+
+                    </p>
+                </div>
+                <?php if(isset($_SESSION['user_id'])): ?>
+                <form method="POST" action="process.php" style="display: inline;">
+                    <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?>">
+                    <button type="submit" name="borrow_book" class="btn btn-primary w-100 btn-sm"
+                        onclick="return confirm('هل تريد استعارة هذا الكتاب؟')">
+                        استعارة الكتاب
+                    </button>
+                    <input type="hidden" name="book_id" value="<?= $book['id'] ?>">
+                </form>
+                <form method="POST" action="process.php" style="display: inline;">
+                    <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?>">
+                    <button type="submit" name="borrow_book" class="btn btn-primary w-100 btn-sm"
+                        onclick="return confirm('هل تريد شراء هذا الكتاب؟')">
+                        شراء الكتاب
+                    </button>
+                    <input type="hidden" name="book_id" value="<?= $book['id'] ?>">
+                </form>
+                <?php else: ?>
+                <button class="btn btn-secondary" data-bs-toggle="modal" data-bs-target="#loginModal">
+                    سجل دخول للاستعارة
+                </button>
+                <?php endif; ?>
+            </div>
+
+        </div>
+        <?php endwhile; ?>
+    </div> <!-- إغلاق صف البطاقات هنا -->
+    <?php else: ?>
+    <div class="col-12">
+        <div class="alert alert-warning">لا توجد كتب فيزيائية متاحة حاليًا</div>
+    </div>
+    <?php endif; ?>
+</div>
+
+
+<!-- قسم الكتب الفيزيائية -->
+<div class="container py-5">
+    <!-- العنوان الرئيسي -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <h2 class="fw-bold border-bottom pb-3">الكتب الإلكترونية</h2>
+        </div>
+    </div>
+    <?php if($e_books->num_rows > 0): ?>
+    <div class="row g-4">
+        <!-- إضافة صف واحد يحتوي جميع البطاقات -->
+        <?php while($book = $e_books->fetch_assoc()): ?>
+        <!-- البطاقة -->
+        <div class="col-6 col-md-4 col-lg-2">
+            <!-- تعديل الأعمدة لعرض 6 بطاقات في الصف -->
+            <div class="card h-100 shadow-sm">
+                <img src="<?= BASE_URL ?>assets/images/books/<?= $book['cover_image'] ?>" class="card-img-top"
+                    alt="غلاف الكتاب" style="height: 200px; object-fit: cover;">
+                <div class="card-body d-flex flex-column">
+                    <h5 class="card-title fs-6"><?= htmlspecialchars($book['title']) ?></h5>
+                    <p class="card-text text-muted small">
+                        <?= htmlspecialchars($book['author']) ?><br>
+                        <?= $book['price'] ?> ر.س
+                    </p>
+                </div>
+                <?php if(isset($_SESSION['user_id'])): ?>
+
+                <form method="POST" action="process.php" style="display: inline;">
+                    <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?>">
+                    <button type="submit" name="borrow_book" class="btn btn-primary w-100 btn-sm"
+                        onclick="return confirm('هل تريد استعارة هذا الكتاب؟')">
+                        استعارة الكتاب
+                    </button>
+                    <input type="hidden" name="book_id" value="<?= $book['id'] ?>">
+                </form>
+
+
+                <form method="POST" action="process.php" style="display: inline;">
+                    <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?>">
+                    <button type="submit" name="borrow_book" class="btn btn-primary w-100 btn-sm"
+                        onclick="return confirm('هل تريد شراء هذا الكتاب؟')">
+                        شراء الكتاب
+                    </button>
+                    <input type="hidden" name="book_id" value="<?= $book['id'] ?>">
+                </form>
+                <?php else: ?>
+                <button class="btn btn-secondary" data-bs-toggle="modal" data-bs-target="#loginModal">
+                    سجل دخول للشراء
+                </button>
+                <?php endif; ?>
+            </div>
+
+        </div>
+        <?php endwhile; ?>
+        <?php else: ?>
+        <div class="col-12">
+            <div class="alert alert-warning">لا توجد كتب إلكترونية متاحة حاليًا</div>
+        </div>
+        <?php endif; ?>
+    </div>
+</div>
+
+
+<?php
+
+require __DIR__ . '/includes/footer.php';
+?>
+//////////*****//*/*/*/*/*/-*/-*/-*/-*/-*/-*/-*/-*/-/-*/-/
+
+<?php
+// ملف index.php
+session_start();
+require __DIR__ . '/includes/config.php';
+require __DIR__ . '/includes/header2.php';
+// معالجة معاملات البحث والتصفية
+$search = $_GET['search'] ?? '';
+$category_filter = $_GET['category'] ?? 'all';
+// بناء الاستعلام الأساسي مع شروط التصفية
+$base_query = "
+    SELECT 
+        books.*, 
+        categories.category_name 
+    FROM books
+    INNER JOIN categories 
+        ON books.category_id = categories.category_id
+    WHERE 1=1
+    AND (books.type = 'physical' AND books.quantity > 0 OR books.type = 'e-book')
+";
+// إضافة شروط البحث
+$params = [];
+$types = '';
+if (!empty($search)) {
+    $base_query .= " AND (books.title LIKE ? OR books.author LIKE ?)";
+    $search_term = "%$search%";
+    $params[] = $search_term;
+    $params[] = $search_term;
+    $types .= 'ss';
+}
+// إضافة فلتر التصنيف
+if ($category_filter !== 'all') {
+    $base_query .= " AND categories.category_id = ?";
+    $params[] = $category_filter;
+    $types .= 'i';
+}
+// تقسيم الاستعلام حسب النوع
+$physical_query = $base_query . " AND books.type = 'physical'";
+$e_book_query = $base_query . " AND books.type = 'e-book'";
+
+// تنفيذ الاستعلامات
+$stmt_physical = $conn->prepare($physical_query);
+if ($types !== '') $stmt_physical->bind_param($types, ...$params);
+$stmt_physical->execute();
+$physical_books = $stmt_physical->get_result();
+
+$stmt_e = $conn->prepare($e_book_query);
+if ($types !== '') $stmt_e->bind_param($types, ...$params);
+$stmt_e->execute();
+$e_books = $stmt_e->get_result();
+
+// جلب الكتب المقترحة
+$recommended_books = [];
+if (isset($_SESSION['user_id'])) {
+    $query = "
+        SELECT b.* 
+        FROM books b
+        JOIN user_categories uc ON b.category_id = uc.category_id
+        WHERE uc.user_id = ?
+    ";
+    $stmt = $conn->prepare($query);
+    $stmt->bind_param("i", $_SESSION['user_id']);
+    $stmt->execute();
+    $recommended_books = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+}
+
+// جلب جميع الكتب
+$all_books = $conn->query("SELECT * FROM books");
+?>
+
+<!-- عرض الكتب المقترحة -->
+<?php if (!empty($recommended_books)): ?>
+<div class="recommended-section" sytle="background:yellow;">
+    <h3>📚 كتب مخصصة لك</h3>
+    <div class="row">
+        <?php foreach ($recommended_books as $book): ?>
+        <div class="col-md-4">
+            <div class="book-card">
+                <img src="<?= htmlspecialchars($book['cover_image']) ?>" class="book-cover">
+                <h5><?= htmlspecialchars($book['title']) ?></h5>
+                <p><?= htmlspecialchars($book['author']) ?></p>
+            </div>
+        </div>
+        <?php endforeach; ?>
+    </div>
+</div>
+<?php endif; ?>
+
+<!-- عرض جميع الكتب -->
+<div class="all-books-section">
+    <h3>🏛 جميع الكتب المتاحة</h3>
+    <div class="row">
+        <?php while ($book = $all_books->fetch_assoc()): ?>
+        <div class="col-md-4">
+            <div class="book-card">
+                <img src="<?= htmlspecialchars($book['cover_image']) ?>" class="book-cover">
+                <h5><?= htmlspecialchars($book['title']) ?></h5>
+                <p><?= htmlspecialchars($book['author']) ?></p>
+            </div>
+        </div>
+        <?php endwhile; ?>
+    </div>
+</div>
+<?php require __DIR__ . '/includes/footer.php';?>
+
+/-*//-*//*/-/-*/*/*/-/*/-*/-*/-/-*/-*/-*/-*/-*/-/-*/*/-/-*/-*/
+
+<?php
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
+error_reporting(E_ALL);
+ini_set('display_errors', 1);
+// ملف admin/dashboard.php
+require __DIR__ . '/includes/config.php'; // 
+require __DIR__ . '/includes/functions.php'; // 
+require __DIR__ . '/includes/header.php'; // 
+// التحقق من وجود الجلسة و نوع المستخدم
+if (!isset($_SESSION['user_id']) ){
+    header("Location: " . BASE_URL . "login.php");
+    exit();
+}
+
+if ($_SESSION['user_type'] != 'user') {
+    header("Location: " . BASE_URL . "index.php");
+    exit();
+}
+
+// الحصول على تفاصيل الدفع
+$stmt = $conn->prepare("
+    SELECT p.*, br.book_id 
+    FROM payments p
+    JOIN borrow_requests br ON p.request_id = br.id
+    JOIN users u ON br.user_id = u.id
+    WHERE p.request_id = ? 
+    AND u.id = ?
+    AND p.status = 'pending'
+");
+$stmt->bind_param("ii", $_GET['request_id'], $_SESSION['user_id']);
+$stmt->execute();
+$payment = $stmt->get_result()->fetch_assoc();
+
+
+if ($stmt->affected_rows === 0) {
+    $_SESSION['error'] = "فشل في تحديث حالة الدفع";
+    header("Location: " . BASE_URL . "profile.php");
+    exit();
+}
+
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    // محاكاة الحصول على transaction_id من بوابة الدفع
+    $transaction_id = uniqid('TRX_'); // مثال: توليد معرف معاملة
+    
+    $stmt = $conn->prepare("
+        UPDATE payments 
+        SET 
+            status = 'completed', 
+            payment_date = NOW(),
+            transaction_id = ?
+        WHERE payment_id = ?
+    ");
+    $stmt->bind_param("si", $transaction_id, $payment['payment_id']);
+    $stmt->execute();
+
+    // تحديث حالة الطلب إلى approved
+    $stmt_borrow = $conn->prepare("
+        UPDATE borrow_requests 
+        SET status = 'approved' 
+        WHERE id = ?
+    ");
+    $stmt_borrow->bind_param("i", $payment['request_id']);
+    $stmt_borrow->execute();
+
+    // إنشاء إشعار جديد برابط الكتاب
+    $read_link = BASE_URL . "read_book.php?request_id=" . $payment['request_id'];
+    $expires = date('Y-m-d H:i:s', strtotime('+14 days'));
+
+    $stmt_notif = $conn->prepare("
+        INSERT INTO notifications (user_id, message, link, expires_at)
+        VALUES (?, ?, ?, ?)
+    ");
+    $message = "رابط قراءة الكتاب متاح حتى $expires";
+    $stmt_notif->bind_param("isss", $_SESSION['user_id'], $message, $read_link, $expires);
+    $stmt_notif->execute();
+
+    // تحديث حالة الإشعار إلى "مقروء"
+    $notification_link = BASE_URL . "payment.php?request_id=" . $payment['request_id'];
+    $stmt_update_notif = $conn->prepare("
+        UPDATE notifications 
+        SET is_read = 1 
+        WHERE link = ? 
+        AND user_id = ?
+    ");
+    $stmt_update_notif->bind_param("si", $notification_link, $_SESSION['user_id']);
+    $stmt_update_notif->execute();
+
+    $_SESSION['success'] = "تم الدفع بنجاح";
+    header("Location: " . $read_link);
+    exit();
+}
+?>
+
+<!-- واجهة الدفع البسيطة -->
+<div class="container">
+    <h2>دفع مبلغ <?= $payment['amount'] ?> ليرة سورية</h2>
+    <form method="POST">
+        <div class="mb-3">
+            <label class="form-label">رقم البطاقة</label>
+            <input type="text" class="form-control" required>
+        </div>
+        <button type="submit" class="btn btn-success">تأكيد الدفع</button>
+    </form>
+</div>
+
+//////////////////////////////////////////////////////
+<div class="container mt-4">
+    <?php if ($user['user_type'] === 'admin' && $notifications->num_rows > 0): ?>
+    <div class="mb-5">
+        <?php while($notif = $notifications->fetch_assoc()): ?>
+        <div class="alert alert-info alert-dismissible fade show">
+            <p><?= htmlspecialchars($notif['message']) ?></p>
+            <a href="<?= $notif['link'] ?>" class="btn btn-sm btn-primary">
+                إدارة الطلبات
+            </a>
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"
+                onclick="markAsRead(<?= $notif['notification_id'] ?>)"></button>
+        </div>
+        <?php endwhile; ?>
+    </div>
+    <?php endif; ?>
+
+</div>
+
+/////////////////////////////////////////////////////////////////////////////
+<?php
+session_start();
+require __DIR__ . '/includes/db_logger.php';
+require __DIR__ . '/includes/config.php';
+
+// توليد CSRF Token
+if (empty($_SESSION['csrf_token'])) {
+    $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+}
+
+error_reporting(E_ALL);
+ini_set('display_errors', 1);
+ini_set('display_startup_errors', 1);
+
+// التحقق من صلاحيات الأدمن
+function isAdmin() {
+    return isset($_SESSION['user_type']) && $_SESSION['user_type'] === 'admin';
+}
+
+// ======== معالجة تسجيل المستخدم ========
+if (isset($_POST['register'])) {
+    try {
+        $name = htmlspecialchars($_POST['name']);
+        $email = filter_var($_POST['email'], FILTER_SANITIZE_EMAIL);
+        $password = password_hash($_POST['password'], PASSWORD_DEFAULT);
+
+        // التحقق من البريد الإلكتروني
+        $stmt = $conn->prepare("SELECT id FROM users WHERE email = ?");
+        $stmt->bind_param("s", $email);
+        $stmt->execute();
         
+        if ($stmt->get_result()->num_rows > 0) {
+            $_SESSION['error'] = "البريد الإلكتروني مسجل مسبقًا!";
+            header("Location: register.php");
+            exit();
+        }
+
+        // إضافة مستخدم جديد
+        $stmt = $conn->prepare("INSERT INTO users (name, email, password, user_type) VALUES (?, ?, ?, 'user')");
+        $stmt->bind_param("sss", $name, $email, $password);
+        
+        if ($stmt->execute()) {
+            $_SESSION['success'] = "تم التسجيل بنجاح!";
+            header("Location: login.php");
+        } else {
+            throw new Exception("فشل في تنفيذ الاستعلام");
+        }
+        
+    } catch (Exception $e) {
+        error_log("Registration Error: " . $e->getMessage());
+        $_SESSION['error'] = "حدث خطأ أثناء التسجيل";
+        header("Location: register.php");
+    }
+    exit();
+}
+
+// ======== معالجة تسجيل الدخول ========
+if (isset($_POST['login'])) {
+    $name = $conn->real_escape_string($_POST['name']);
+    $password = $_POST['password'];
+    
+    try {
+        $stmt = $conn->prepare("SELECT * FROM users WHERE name = ?");
+        $stmt->bind_param("s", $name);
+        $stmt->execute();
+        $result = $stmt->get_result();
+        
+        if ($result->num_rows === 0) {
+            throw new Exception("المستخدم غير موجود");
+        }
+        
+        $user = $result->fetch_assoc();
+        if (!password_verify($password, $user['password'])) {
+            throw new Exception("كلمة المرور خاطئة");
+        }
+        
+        // تعيين بيانات الجلسة
+        $_SESSION['user_id'] = $user['id'];
+        $_SESSION['user_name'] = $user['name'];
+        $_SESSION['user_type'] = $user['user_type'];
+        
+        DatabaseLogger::log(
+            'login_success',
+            $user['name'],
+            'تم تسجيل الدخول بنجاح'
+        );
+        
+        header("Location: " . BASE_URL . ($user['user_type'] == 'admin' ? 'admin/dashboard.php' : 'user/dashboard.php'));
+        
+    } catch (Exception $e) {
+        DatabaseLogger::log(
+            'login_failed',
+            $name,
+            $e->getMessage()
+        );
+        $_SESSION['error'] = "بيانات الدخول غير صحيحة";
+        header("Location: login.php");
+    }
+    exit();
+}
+
+// ======== إضافة كتب (للمسؤولين فقط) ========
+if (isset($_POST['add_book']) && isAdmin()) {
+    try {
+        // التحقق من البيانات
+        $title = htmlspecialchars($_POST['title']);
+        $author = htmlspecialchars($_POST['author']);
+        $type = in_array($_POST['type'], ['physical', 'e-book']) ? $_POST['type'] : 'physical';
+        $quantity = (int)$_POST['quantity'];
+        $price = (float)$_POST['price'];
+        $category_id = (int)$_POST['category_id'];
+        $evaluation = (float)$_POST['evaluation'];
+        $description = htmlspecialchars($_POST['description']);
+
+        
+        // معالجة تحميل الصورة
+        if (!isset($_FILES['cover_image']['error']) || $_FILES['cover_image']['error'] !== UPLOAD_ERR_OK) {
+            throw new Exception('يجب اختيار صورة غلاف');
+        }
+        
+        $upload_dir = 'assets/images/books/';
+        $extension = pathinfo($_FILES['cover_image']['name'], PATHINFO_EXTENSION);
+        $new_filename = uniqid() . '_' . date('YmdHis') . '.' . $extension;
+        $target_path = $upload_dir . $new_filename;
+        
+        if (!is_dir($upload_dir)) mkdir($upload_dir, 0755, true);
+        if (!move_uploaded_file($_FILES['cover_image']['tmp_name'], $target_path)) {
+            throw new Exception('فشل في حفظ الصورة');
+        }
+
+        // ━━━━━━━━━━ معالجة تحميل الملف (file_path) ━━━━━━━━━━
+        if (!isset($_FILES['file_path']['error']) || $_FILES['file_path']['error'] !== UPLOAD_ERR_OK) {
+            throw new Exception('يجب رفع ملف الكتاب');
+        }
+        
+        $file_upload_dir = 'assets/files/'; // مجلد تخزين الملفات
+        $file_extension = pathinfo($_FILES['file_path']['name'], PATHINFO_EXTENSION);
+        $file_new_name = uniqid() . '_' . date('YmdHis') . '.' . $file_extension;
+        $file_target_path = $file_upload_dir . $file_new_name;
+        
+        if (!is_dir($file_upload_dir)) mkdir($file_upload_dir, 0755, true);
+        if (!move_uploaded_file($_FILES['file_path']['tmp_name'], $file_target_path)) {
+            throw new Exception('فشل في حفظ الملف');
+        }
+
+        
+        // إدخال البيانات
+        $stmt = $conn->prepare("
+            INSERT INTO books 
+            (title, author, type, quantity, price, cover_image, category_id,file_path, evaluation, description)   
+            VALUES (?, ?, ?, ?, ?, ?, ?,?,?,?)
+        ");
+        
+        if (!$stmt) {
+            throw new Exception("خطأ في إعداد الاستعلام: " . $conn->error);
+        }
+        
+        $stmt->bind_param("sssidsisss", $title, $author, $type, $quantity, $price, $new_filename, $category_id, $file_target_path, $evaluation, $description);
+        
+        if ($stmt->execute()) {
+            $_SESSION['success'] = "تمت إضافة الكتاب بنجاح!";
+        } else {
+            throw new Exception("فشل في إضافة الكتاب");
+        }
+        
+        header("Location: " . BASE_URL . "admin/dashboard.php");
+        
+    } catch (Exception $e) {
+        $_SESSION['error'] = $e->getMessage();
+        header("Location: " . BASE_URL . "admin/manage_books.php");
+    }
+    exit();
+}
+
+// ======== تحديث الكتب (للمسؤولين فقط) ========
+if (isset($_POST['update_book']) && isAdmin()) {
+    try {
+        $book_id = (int)$_POST['book_id'];
+        $title = htmlspecialchars($_POST['title']);
+        $author = htmlspecialchars($_POST['author']);
+        $type = $_POST['type'] === 'e-book' ? 'e-book' : 'physical';
+        $quantity = (int)$_POST['quantity'];
+        $price = (float)$_POST['price'];
+        $category_id = (int)$_POST['category_id'];
+        
+        $stmt = $conn->prepare("
+            UPDATE books SET 
+            title = ?, 
+            author = ?, 
+            type = ?, 
+            quantity = ?, 
+            price = ?, 
+            category_id = ? 
+            WHERE id = ?
+        ");
+        
+        $stmt->bind_param("sssidii", $title, $author, $type, $quantity, $price, $category_id, $book_id);
+        
+        if ($stmt->execute()) {
+            $_SESSION['success'] = "تم التحديث بنجاح!";
+        } else {
+            throw new Exception("فشل في التحديث");
+        }
+        
+        header("Location: " . BASE_URL . "admin/dashboard.php");
+        
+    } catch (Exception $e) {
+        $_SESSION['error'] = $e->getMessage();
+        header("Location: " . BASE_URL . "admin/manage_books.php");
+    }
+    exit();
+}
+
+// ======== معالجة طلب الاستعارة ========
+if (isset($_POST['borrow_book'])) {
+    try {
+        // التحقق من CSRF Token
+        if (!isset($_POST['csrf_token']) || $_POST['csrf_token'] !== $_SESSION['csrf_token']) {
+            throw new Exception('طلب غير مصرح به');
+        }
+        
+        if (!isset($_SESSION['user_id'])) {
+            throw new Exception('يجب تسجيل الدخول أولاً');
+        }
+        
+        $book_id = (int)$_POST['book_id'];
+        if ($book_id <= 0) {
+            throw new Exception('معرّف كتاب غير صالح');
+        }
+        
+        // بدء المعاملة
+        $conn->begin_transaction();
+        
+        // التحقق من التوفر
+        $stmt = $conn->prepare("SELECT quantity FROM books WHERE id = ? FOR UPDATE");
+        $stmt->bind_param("i", $book_id);
+        $stmt->execute();
+        $result = $stmt->get_result();
+        
+        if ($result->num_rows === 0) {
+            throw new Exception('الكتاب غير موجود');
+        }
+        
+        $book = $result->fetch_assoc();
+        if ($book['quantity'] < 1) {
+            throw new Exception('الكتاب غير متاح');
+        }
+        // التحقق من رصيد المستخدم
+        $stmt_wallet = $conn->prepare("SELECT balance FROM wallets WHERE user_id = ? FOR UPDATE");
+        $stmt_wallet->bind_param("i", $_SESSION['user_id']);
+        $stmt_wallet->execute();
+        $wallet = $stmt_wallet->get_result()->fetch_assoc();
+
+        if ($wallet['balance'] < 5000) {
+            $_SESSION['borrow_redirect'] = true; // علم لإعادة التوجيه بعد الإضافة
+            $_SESSION['error'] = 'الرصيد غير كافي. يرجى إضافة 25,000 ليرة أولاً';
+            header("Location: " . BASE_URL . "add_funds.php");
+            exit();
+        }
+        // بعد التحقق من الرصيد
+        if ($wallet['balance'] < 5000) {
+            $_SESSION['borrow_redirect'] = true; // علم لإعادة التوجيه بعد الشحن
+            $_SESSION['required_amount'] = 25000; // المبلغ المطلوب
+            header("Location: " . BASE_URL . "add_funds.php");
+            exit();
+        }
+                // إضافة طلب الاستعارة
+        $stmt = $conn->prepare("INSERT INTO borrow_requests (user_id, book_id, status) VALUES (?, ?, 'pending')");
+        $stmt->bind_param("ii", $_SESSION['user_id'], $book_id);
+        $stmt->execute();
+        
+        // تحديث الكمية
+        $stmt = $conn->prepare("UPDATE books SET quantity = quantity - 1 WHERE id = ?");
+        $stmt->bind_param("i", $book_id);
+        $stmt->execute();
+        
+        // إضافة إشعار للمديرين
+        $user_name = $_SESSION['user_name'];
+        $stmt_book = $conn->prepare("SELECT title FROM books WHERE id = ?");
+        $stmt_book->bind_param("i", $book_id);
+        $stmt_book->execute();
+        $book_title = $stmt_book->get_result()->fetch_assoc()['title'];
+        
+        $admin_query = $conn->query("SELECT id FROM users WHERE user_type = 'admin'");
+        while ($admin = $admin_query->fetch_assoc()) {
+            $message = "طلب استعارة: $user_name - كتاب: $book_title";
+            $link = BASE_URL . "admin/borrow_requests.php";
+            
+            $stmt_notif = $conn->prepare("
+                INSERT INTO notifications 
+                (user_id, message, link) 
+                VALUES (?, ?, ?)
+            ");
+            
+            if ($stmt_notif) {
+                $stmt_notif->bind_param("iss", $admin['id'], $message, $link);
+                $stmt_notif->execute();
+            }
+        }
+        
+        $conn->commit();
+        $_SESSION['success'] = "تم إرسال الطلب بنجاح!";
+        
+    } catch (Exception $e) {
+        $conn->rollback();
+        $_SESSION['error'] = "خطأ: " . $e->getMessage();
+        error_log("Borrow Error: " . $e->getMessage());
+    }
+    
+    header("Location: " . BASE_URL . "index.php");
+    exit();
+}
+
+// إذا لم يتم التعرف على أي عملية
+die("طلب غير معروف");
+
+/////////////////////////////////////////////////////////////////////////////////////

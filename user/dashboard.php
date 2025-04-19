@@ -1,6 +1,7 @@
 <?php
 require __DIR__ . '/../includes/config.php';
 require __DIR__ . '/../includes/user_auth.php';
+include __DIR__ . '/../includes/header.php'; 
 // جلب البيانات
 $user_id = $_SESSION['user_id'];
 
@@ -28,34 +29,27 @@ $stmt->execute();
 $pending_requests = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
 ?>
 
-<!DOCTYPE html>
-<html lang="ar" dir="rtl">
-<head>
-    <?php include __DIR__ . '/../includes/header.php'; ?>
-    <title>لوحة التحكم - المستخدم</title>
-    <style>
-        .sidebar { background: #f8f9fa; min-height: 100vh; }
-        .sidebar .btn { text-align: right; width: 100%; margin: 5px 0; }
-        .content-section { display: none; }
-        .content-section.active { display: block; }
-        .overdue { background-color: #ffe6e6; }
-        .due-soon { background-color: #fff3cd; }
-    </style>
-</head>
-<body>
     <div class="container-fluid">
         <div class="row">
             <!-- الشريط الجانبي -->
             <div class="col-md-3 sidebar p-4">
                 <div class="d-grid gap-2">
-                    <button onclick="showSection('profile')" class="btn btn-outline-primary active">
+                    <button onclick="showSection('main')" class="btn btn-outline-primary active">
+                        <i class="fas fa-home"></i> الرئيسية
+                    </button>
+
+                    <button onclick="showSection('private')" class="btn btn-outline-danger ">
+                        <i class="fas fa-heart"></i> المفضلة
+                    </button>
+
+                    <button onclick="showSection('profile')" class="btn btn-outline-info ">
                         <i class="fas fa-user"></i> الملف الشخصي
                     </button>
-                    
+
                     <button onclick="showSection('borrowed')" class="btn btn-outline-success">
                         <i class="fas fa-book"></i> الكتب المستعارة
                     </button>
-                    
+
                     <button onclick="showSection('pending')" class="btn btn-outline-warning">
                         <i class="fas fa-clock"></i> الطلبات المعلقة
                     </button>
@@ -65,18 +59,36 @@ $pending_requests = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
             <!-- المحتوى الرئيسي -->
             <div class="col-md-9 p-4">
                 <!-- قسم الملف الشخصي -->
-                <div id="profile" class="content-section active">
-                    <h4 class="mb-4">👤 الملف الشخصي</h4>
+                <div id="main" class="content-section active">
+
                     <div class="card">
-                    <div class="card-body">
-                         <?php require __DIR__ . '/profile.php'; ?>
+                        <div class="card-body">
+                            <?php require __DIR__ . '/main.php'; ?>
+                        </div>
                     </div>
+                </div>
+
+                <div id="private" class="content-section ">
+
+                    <div class="card">
+                        <div class="card-body">
+                            <?php require __DIR__ . '/private.php'; ?>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="profile" class="content-section ">
+
+                    <div class="card">
+                        <div class="card-body">
+                            <?php require __DIR__ . '/profile.php'; ?>
+                        </div>
                     </div>
                 </div>
 
                 <!-- قسم الكتب المستعارة -->
                 <div id="borrowed" class="content-section">
-                    <h4 class="mb-4">📚 الكتب المستعارة</h4>
+
                     <?php if(count($borrowed_books) > 0): ?>
                     <div class="table-responsive">
                         <table class="table table-hover">
@@ -123,7 +135,7 @@ $pending_requests = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
 
                 <!-- قسم الطلبات المعلقة -->
                 <div id="pending" class="content-section">
-                    <h4 class="mb-4">⏳ الطلبات المعلقة</h4>
+
                     <?php if(count($pending_requests) > 0): ?>
                     <div class="table-responsive">
                         <table class="table table-hover">
@@ -156,23 +168,21 @@ $pending_requests = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
     </div>
 
     <script>
-        function showSection(sectionId) {
-            // إزالة النشاط من جميع الأزرار
-            document.querySelectorAll('.sidebar .btn').forEach(btn => {
-                btn.classList.remove('active');
-            });
-            
-            // إخفاء جميع الأقسام
-            document.querySelectorAll('.content-section').forEach(section => {
-                section.classList.remove('active');
-            });
-            
-            // إظهار القسم المحدد وإضافة النشاط للزر
-            document.getElementById(sectionId).classList.add('active');
-            event.target.classList.add('active');
-        }
+    function showSection(sectionId) {
+        // إزالة النشاط من جميع الأزرار
+        document.querySelectorAll('.sidebar .btn').forEach(btn => {
+            btn.classList.remove('active');
+        });
+
+        // إخفاء جميع الأقسام
+        document.querySelectorAll('.content-section').forEach(section => {
+            section.classList.remove('active');
+        });
+
+        // إظهار القسم المحدد وإضافة النشاط للزر
+        document.getElementById(sectionId).classList.add('active');
+        event.target.classList.add('active');
+    }
     </script>
 
     <?php require __DIR__ . '/../includes/footer.php'; ?>
-</body>
-</html>

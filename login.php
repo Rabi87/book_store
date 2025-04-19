@@ -1,22 +1,22 @@
 <?php 
 if (session_status() === PHP_SESSION_NONE) {
-    session_start();
-}
+    session_start();}
+
 require __DIR__ . '/includes/config.php'; 
 require __DIR__ . '/includes/header.php'; 
-
 ?>
 
 <div class="container mt-5">
-    
-
     <div class="row justify-content-center">
         <div class="col-md-6">
-        <?php include __DIR__ . '/includes/alerts.php'; ?> <!-- رسائل تحذيرية -->
+            <?php include __DIR__ . '/includes/alerts.php'; ?>
+            <!-- رسائل تحذيرية -->
             <div class="card">
                 <div class="card-header">تسجيل الدخول</div>
                 <div class="card-body">
                     <form action="<?= BASE_URL ?>process.php" method="POST">
+                        <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_SESSION['csrf_token']) ?>">
+
                         <div class="mb-3">
                             <input type="text" class="form-control" placeholder="اسم المستخدم" name="name" required>
                         </div>

@@ -1,37 +1,41 @@
 <?php
-// يجب أن يكون هذا أول محتوى في الملف
 session_start();
-// تعريف الثوابت الأساسية
-require __DIR__ . '/includes/db_logger.php'; // <-- إضافة هذا السطر
+require __DIR__ . '/includes/db_logger.php';
 require __DIR__ . '/includes/config.php';
 
-// توليد CSRF Token إذا لم يكن موجود
-if (empty($_SESSION['csrf_token'])) {
-    $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
-}
-// كشف الأخطاء للمبرمج .. بجب أن يتم حذفها او تبديل ال 1 الى0 عند النشر
+//if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    // التحقق من وجود CSRF Token في الطلب والجلسة
+ //   if (!isset($_POST['csrf_token']) || $_POST['csrf_token'] !== $_SESSION['csrf_token']) {
+  //      die("Invalid CSRF Token");
+  //  }
+//}
 error_reporting(E_ALL);
 ini_set('display_errors', 1);
 ini_set('display_startup_errors', 1);
-// التحقق من الصلاحيات للعمليات الإدارية
+
+// التحقق من صلاحيات الأدمن
 function isAdmin() {
-    return isset($_SESSION['user_id']) && $_SESSION['user_type'] === 'admin';
+    return isset($_SESSION['user_type']) && $_SESSION['user_type'] === 'admin';
 }
-// معالجة تسجيل المستخدم الجديد
+
+// ======== معالجة تسجيل المستخدم ========
 if (isset($_POST['register'])) {
     try {
         $name = htmlspecialchars($_POST['name']);
         $email = filter_var($_POST['email'], FILTER_SANITIZE_EMAIL);
         $password = password_hash($_POST['password'], PASSWORD_DEFAULT);
+
         // التحقق من البريد الإلكتروني
         $stmt = $conn->prepare("SELECT id FROM users WHERE email = ?");
         $stmt->bind_param("s", $email);
-        $stmt->execute();       
+        $stmt->execute();
+        
         if ($stmt->get_result()->num_rows > 0) {
             $_SESSION['error'] = "البريد الإلكتروني مسجل مسبقًا!";
             header("Location: register.php");
             exit();
         }
+
         // إضافة مستخدم جديد
         $stmt = $conn->prepare("INSERT INTO users (name, email, password, user_type) VALUES (?, ?, ?, 'user')");
         $stmt->bind_param("sss", $name, $email, $password);
@@ -39,132 +43,146 @@ if (isset($_POST['register'])) {
         if ($stmt->execute()) {
             $_SESSION['success'] = "تم التسجيل بنجاح!";
             header("Location: login.php");
-            exit();
+        } else {
+            throw new Exception("فشل في تنفيذ الاستعلام");
         }
+        
     } catch (Exception $e) {
         error_log("Registration Error: " . $e->getMessage());
         $_SESSION['error'] = "حدث خطأ أثناء التسجيل";
         header("Location: register.php");
-        exit();
     }
+    exit();
 }
-// تسجيل الدخول
-if(isset($_POST['login'])){
+
+// ======== معالجة تسجيل الدخول ========
+if (isset($_POST['login'])) {
     $name = $conn->real_escape_string($_POST['name']);
     $password = $_POST['password'];
-    $stmt = $conn->prepare("SELECT * FROM users WHERE name = ?");
-    $stmt->bind_param("s", $name);
-    $stmt->execute();
-    $result = $stmt->get_result();
     
-    if($result->num_rows > 0){
-        $user = $result->fetch_assoc();
-        if(password_verify($password, $user['password'])){
-            // تخزين الجلسة
-            $_SESSION['user_id'] = $user['id'];
-            $_SESSION['user_name'] = $user['name'];
-            $_SESSION['user_email'] = $user['email'];
-            $_SESSION['user_type'] = $user['user_type'];
-            $_SESSION['created_at'] = $user['created_at'];
-            
-            DatabaseLogger::log(
-                'login_success', 
-                $_SESSION['user_name'], 
-                'تم تسجيل الدخول بنجاح' 
-            );
-            
-            header("Location: " . BASE_URL . ($user['user_type'] == 'admin' ? 'admin/dashboard.php' : 'user/dashboard.php'));
-            exit();
-        } else {
-            // حالة كلمة المرور الخاطئة
-            $_SESSION['error'] = "بيانات الدخول غير صحيحة";
-            DatabaseLogger::log(
-                'login_failed', 
-                $name, // استخدام المتغير $name بدلًا من $_POST['user_name']
-                'كلمة المرور خاطئة'
-            );
-            header("Location: " . BASE_URL . "login.php");
-            exit();
+    try {
+        $stmt = $conn->prepare("SELECT * FROM users WHERE name = ?");
+        $stmt->bind_param("s", $name);
+        $stmt->execute();
+        $result = $stmt->get_result();
+        
+        if ($result->num_rows === 0) {
+            throw new Exception("المستخدم غير موجود");
         }
-    } else {  
-        // حالة عدم وجود المستخدم
-        $_SESSION['error'] = "بيانات الدخول غير صحيحة";
+        
+        $user = $result->fetch_assoc();
+        if (!password_verify($password, $user['password'])) {
+            throw new Exception("كلمة المرور خاطئة");
+        }
+        
+        // تعيين بيانات الجلسة
+        $_SESSION['user_id'] = $user['id'];
+        $_SESSION['user_name'] = $user['name'];
+        $_SESSION['user_type'] = $user['user_type'];
+        
         DatabaseLogger::log(
-            'login_failed', 
-            $name, // استخدام المتغير $name
-            'المستخدم غير موجود'
-        );  
-        header("Location: " . BASE_URL . "login.php");
-        exit();
+            'login_success',
+            $user['name'],
+            'تم تسجيل الدخول بنجاح'
+        );
+        
+        header("Location: " . BASE_URL . ($user['user_type'] == 'admin' ? 'admin/dashboard.php' : 'user/dashboard.php'));
+        
+    } catch (Exception $e) {
+        DatabaseLogger::log(
+            'login_failed',
+            $name,
+            $e->getMessage()
+        );
+        $_SESSION['error'] = "بيانات الدخول غير صحيحة";
+        header("Location: login.php");
     }
+    exit();
 }
-// معالجة إضافة الكتب (للمسؤولين فقط)
+
+// ======== إضافة كتب (للمسؤولين فقط) ========
 if (isset($_POST['add_book']) && isAdmin()) {
     try {
+        // التحقق من البيانات
+       
         $title = htmlspecialchars($_POST['title']);
         $author = htmlspecialchars($_POST['author']);
         $type = in_array($_POST['type'], ['physical', 'e-book']) ? $_POST['type'] : 'physical';
         $quantity = (int)$_POST['quantity'];
-        $price = (float)$_POST['price'];   
-        $category_id = (int)$_POST['category_id'];     
-         // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-        // معالجة تحميل الصورة
-        // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-        $upload_dir = 'assets/images/books/';
-        
-        if (!isset($_FILES['cover_image']) || $_FILES['cover_image']['error'] !== UPLOAD_ERR_OK) {
-            throw new Exception('يجب اختيار صورة غلاف للكتاب');
-        }
+        $price = (float)$_POST['price'];
+        $category_id = (int)$_POST['category_id'];
+        $evaluation = (float)$_POST['evaluation'];
+        $description = htmlspecialchars($_POST['description']);
 
-        // إنشاء اسم فريد للصورة
-        $original_name = $_FILES['cover_image']['name'];
-        $extension = pathinfo($original_name, PATHINFO_EXTENSION);
+        
+        // معالجة تحميل الصورة
+        if (!isset($_FILES['cover_image']['error']) || $_FILES['cover_image']['error'] !== UPLOAD_ERR_OK) {
+            throw new Exception('يجب اختيار صورة غلاف');
+        }
+        
+        $upload_dir = 'assets/images/books/';
+        $extension = pathinfo($_FILES['cover_image']['name'], PATHINFO_EXTENSION);
         $new_filename = uniqid() . '_' . date('YmdHis') . '.' . $extension;
         $target_path = $upload_dir . $new_filename;
-
-        // إنشاء المجلد إذا لم يكن موجودًا
-        if (!is_dir($upload_dir)) {
-            mkdir($upload_dir, 0755, true);
-        }
-
-        // نقل الملف إلى المجلد المحدد
+        
+        if (!is_dir($upload_dir)) mkdir($upload_dir, 0755, true);
         if (!move_uploaded_file($_FILES['cover_image']['tmp_name'], $target_path)) {
-            throw new Exception('فشل في حفظ الصورة!');
+            throw new Exception('فشل في حفظ الصورة');
         }
 
-        $stmt = $conn->prepare("
-        INSERT INTO books 
-        (title, author, type, quantity, price, cover_image, category_id)  
-        VALUES (?, ?, ?, ?, ?, ?,?)
-    ");
-        if (!$stmt) {
-            die("خطأ في تحضير الاستعلام: " . $conn->error);
+        // ━━━━━━━━━━ معالجة تحميل الملف (file_path) ━━━━━━━━━━
+        if (!isset($_FILES['file_path']['error']) || $_FILES['file_path']['error'] !== UPLOAD_ERR_OK) {
+            throw new Exception('يجب رفع ملف الكتاب');
         }
-        var_dump($title, $author, $type, $quantity, $price, $new_filename);
-        //انتبه هنا sssids 
-        //s: سلسلة نصية (title, author, type, cover_image, category_id).
-        //i: عدد صحيح (quantity).
-        //d: عدد عشري (price).
-        $stmt->bind_param("sssidsi", $title, $author, $type, $quantity, $price, $new_filename,  $category_id);     
+        
+        $file_upload_dir = 'assets/files/'; // مجلد تخزين الملفات
+        $file_extension = pathinfo($_FILES['file_path']['name'], PATHINFO_EXTENSION);
+        $file_new_name = uniqid() . '_' . date('YmdHis') . '.' . $file_extension;
+        $file_target_path = $file_upload_dir . $file_new_name;
+        
+        if (!is_dir($file_upload_dir)) mkdir($file_upload_dir, 0755, true);
+        if (!move_uploaded_file($_FILES['file_path']['tmp_name'], $file_target_path)) {
+            throw new Exception('فشل في حفظ الملف');
+        }
+
+        
+        // إدخال البيانات
+        $stmt = $conn->prepare("
+            INSERT INTO books 
+            (title, author, type, quantity, price, cover_image, category_id,file_path, evaluation, description)   
+            VALUES (?, ?, ?, ?, ?, ?, ?,?,?,?)
+        ");
+        
+        if (!$stmt) {
+            throw new Exception("خطأ في إعداد الاستعلام: " . $conn->error);
+        }
+        
+        $stmt->bind_param("sssidsisss", $title, $author, $type, $quantity, $price, $new_filename, $category_id, $file_target_path, $evaluation, $description);
+        
         if ($stmt->execute()) {
             $_SESSION['success'] = "تمت إضافة الكتاب بنجاح!";
         } else {
-            $_SESSION['error'] = "فشل في إضافة الكتاب!";
-
-        }        
+            throw new Exception("فشل في إضافة الكتاب");
+        }
+        
         header("Location: " . BASE_URL . "admin/dashboard.php");
-        exit();        
+        
     } catch (Exception $e) {
-        error_log("Add Book Error: " . $e->getMessage());
-        $_SESSION['error'] = "خطأ: " . $e->getMessage();
+        $_SESSION['error'] = $e->getMessage();
         header("Location: " . BASE_URL . "admin/manage_books.php");
-        exit();
     }
+    exit();
 }
 
-// معالجة تحديث الكتاب
+// ======== معالجة تحديث الكتب (مع دعم الملفات) ========
 if (isset($_POST['update_book']) && isAdmin()) {
     try {
+        // التحقق من CSRF Token
+        //if (!isset($_POST['csrf_token']) || $_POST['csrf_token'] !== $_SESSION['csrf_token']) {
+         //   throw new Exception('طلب غير مصرح به');
+       // }
+
+        // جلب البيانات الأساسية
         $book_id = (int)$_POST['book_id'];
         $title = htmlspecialchars($_POST['title']);
         $author = htmlspecialchars($_POST['author']);
@@ -172,7 +190,44 @@ if (isset($_POST['update_book']) && isAdmin()) {
         $quantity = (int)$_POST['quantity'];
         $price = (float)$_POST['price'];
         $category_id = (int)$_POST['category_id'];
+        $evaluation = (float)$_POST['evaluation'];
+        $description = htmlspecialchars($_POST['description']);
 
+        // جلب البيانات الحالية
+        $stmt = $conn->prepare("SELECT cover_image, file_path FROM books WHERE id = ?");
+        $stmt->bind_param("i", $book_id);
+        $stmt->execute();
+        $current_data = $stmt->get_result()->fetch_assoc();
+
+        // ━━━━━━━ معالجة صورة الغلاف ━━━━━━━
+        $cover_image = $current_data['cover_image'];
+        if (!empty($_FILES['cover_image']['name'])) {
+            $upload_dir = 'assets/images/books/';
+            $extension = pathinfo($_FILES['cover_image']['name'], PATHINFO_EXTENSION);
+            $new_filename = uniqid() . '_' . date('YmdHis') . '.' . $extension;
+            
+            if (!is_dir($upload_dir)) mkdir($upload_dir, 0755, true);
+            if (!move_uploaded_file($_FILES['cover_image']['tmp_name'], $upload_dir . $new_filename)) {
+                throw new Exception('فشل في حفظ الصورة');
+            }
+            $cover_image = $upload_dir . $new_filename;
+        }
+
+        // ━━━━━━━ معالجة ملف الكتاب ━━━━━━━
+        $file_path = $current_data['file_path'];
+        if (!empty($_FILES['file_path']['name'])) {
+            $file_upload_dir = 'assets/files/';
+            $file_extension = pathinfo($_FILES['file_path']['name'], PATHINFO_EXTENSION);
+            $file_new_name = uniqid() . '_' . date('YmdHis') . '.' . $file_extension;
+            
+            if (!is_dir($file_upload_dir)) mkdir($file_upload_dir, 0755, true);
+            if (!move_uploaded_file($_FILES['file_path']['tmp_name'], $file_upload_dir . $file_new_name)) {
+                throw new Exception('فشل في حفظ الملف');
+            }
+            $file_path = $file_upload_dir . $file_new_name;
+        }
+
+        // تحديث البيانات في قاعدة البيانات
         $stmt = $conn->prepare("
             UPDATE books SET 
             title = ?, 
@@ -180,94 +235,96 @@ if (isset($_POST['update_book']) && isAdmin()) {
             type = ?, 
             quantity = ?, 
             price = ?, 
-            category_id = ? 
+            category_id = ?,
+            cover_image = ?,
+            file_path = ? ,
+            description=?,
+            evaluation=?
             WHERE id = ?
         ");
         
-        $stmt->bind_param("sssidii", $title, $author, $type, $quantity, $price, $category_id, $book_id);
-        
-        if ($stmt->execute()) {
-            $_SESSION['success'] = "تم تحديث الكتاب بنجاح!";
-        } else {
-            $_SESSION['error'] = "فشل في التحديث!";
-        }
-        
-        header("Location: " . BASE_URL . "admin/dashboard.php");
-        exit();
-        
-    } catch (Exception $e) {
-        error_log("Update Error: " . $e->getMessage());
-        $_SESSION['error'] = "حدث خطأ أثناء التحديث";
-        header("Location: " . BASE_URL . "admin/manage_books.php");
-        exit();
-    }}
+        $stmt->bind_param("sssidissssi", 
+            $title, 
+            $author, 
+            $type, 
+            $quantity, 
+            $price, 
+            $category_id,
+            $cover_image,
+            $file_path,
+            $description,
+            $evaluation,
+            $book_id
+        );
 
-// معالجة طلب الاستعارة
-if(isset($_POST['borrow_book'])) {
-    try 
+        if ($stmt->execute()) {
+            $_SESSION['success'] = "✅ تم تحديث الكتاب بنجاح!";
+        } 
+        else
+         {
+            throw new Exception("❌ فشل في التحديث: " . $stmt->error);
+        }
+
+        header("Location: " . BASE_URL . "admin/dashboard.php");
+
+    } 
+    catch (Exception $e) 
     {
+        $_SESSION['error'] = $e->getMessage();
+        header("Location: " . BASE_URL . "admin/edit_book.php?id=" . $book_id);
+      
+    }
+    exit();
+}
+
+
+
+// ======== معالجة طلب الاستعارة/الشراء ========
+if (isset($_POST['action'])) {
+    try {
         // التحقق من CSRF Token
         if (!isset($_POST['csrf_token']) || $_POST['csrf_token'] !== $_SESSION['csrf_token']) {
             throw new Exception('طلب غير مصرح به');
         }
-
-        // التحقق من بيانات المستخدم
-        if (!isset($_SESSION['user_id'])) {
-            throw new Exception('يجب تسجيل الدخول أولاً');
-        }
-
-        // التحقق من صحة ID الكتاب
+        
+        // تحديد نوع العملية والمبلغ المطلوب
+        $action = $_POST['action'];
+        $required_amount = ($action === 'borrow') ? 5000 : 25000;
         $book_id = (int)$_POST['book_id'];
-        if ($book_id <= 0) {
-            throw new Exception('معرّف الكتاب غير صالح');
-        }
-        // بدء transaction
-        $conn->begin_transaction();
-        // التحقق من توفر الكتاب
-        $stmt = $conn->prepare("SELECT quantity FROM books WHERE id = ? FOR UPDATE");
-        $stmt->bind_param("i", $book_id);
-        $stmt->execute();
-        $result = $stmt->get_result();
         
-        if ($result->num_rows === 0) {
-            throw new Exception('الكتاب غير موجود');
-        }
-
-        $book = $result->fetch_assoc();
-        if ($book['quantity'] <= 0) {
-            throw new Exception('الكتاب غير متاح للاستعارة');
-        }
-
-        // إضافة طلب الاستعارة
-        $stmt = $conn->prepare("INSERT INTO borrow_requests (user_id, book_id, status) VALUES (?, ?, 'pending')");
-        $stmt->bind_param("ii", $_SESSION['user_id'], $book_id);
+        // التحقق من الرصيد
+        $stmt_wallet = $conn->prepare("SELECT balance FROM wallets WHERE user_id = ?");
+        $stmt_wallet->bind_param("i", $_SESSION['user_id']);
+        $stmt_wallet->execute();
+        $wallet = $stmt_wallet->get_result()->fetch_assoc();
         
-        if (!$stmt->execute()) {
-            throw new Exception('فشل في إرسال الطلب');
-        }
-
-        // تحديث الكمية باستخدام prepared statement
-        $stmt = $conn->prepare("UPDATE books SET quantity = quantity - 1 WHERE id = ?");
-        $stmt->bind_param("i", $book_id);
-        $stmt->execute();
-
-        // تأكيد العملية
-        $conn->commit();
-
-        $_SESSION['success'] = "تم إرسال طلب الاستعارة بنجاح!";
-        
-    }
-    catch (Exception $e)
-    {
-            error_log("Borrow Error: " . $e->getMessage());
-            $_SESSION['error'] = "فشل في عملية الاستعارة: " . $e->getMessage();
-            header("Location: index.php");
+        if ($wallet['balance'] < $required_amount) {
+            $_SESSION['required_amount'] = $required_amount;
+            $_SESSION['book_id'] = $book_id;
+            $_SESSION['action'] = $action;
+            header("Location: add_funds.php");
             exit();
+        }
+        
+        // خصم المبلغ
+        //$stmt_deduct = $conn->prepare("UPDATE wallets SET balance = balance - ? WHERE user_id = ?");
+        //$stmt_deduct->bind_param("di", $required_amount, $_SESSION['user_id']);
+       // $stmt_deduct->execute();
+        
+        // إرسال الطلب إلى المدير
+        $stmt_request = $conn->prepare("INSERT INTO borrow_requests (user_id, book_id, type, amount) VALUES (?, ?, ?, ?)");
+        $stmt_request->bind_param("iisd", $_SESSION['user_id'], $book_id, $action, $required_amount);
+        $stmt_request->execute();
+        
+        $_SESSION['success'] = "تم إرسال الطلب بنجاح!";
+        header("Location: index.php");
+        
+    } catch (Exception $e) {
+        $_SESSION['error'] = "خطأ: " . $e->getMessage();
+        header("Location: index.php");
     }
-   // إذا وصلنا هنا بدون معالجة صحيحة
-header("Location: " . BASE_URL . "index.php");
-exit();
+    exit();
 }
+
+// إذا لم يتم التعرف على أي عملية
 die("طلب غير معروف");
-require __DIR__ . '/includes/footer.php';
-?>

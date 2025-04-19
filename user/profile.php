@@ -1,14 +1,18 @@
 <?php
 
 require __DIR__ . '/../includes/config.php';
-
-
 // التحقق من تسجيل الدخول
-if (!isset($_SESSION['user_id']) || $_SESSION['user_type'] != 'user') {
+
+// ✅ التصحيح (تحقق من user_id أولاً)
+if (!isset($_SESSION['user_id'])) {
     header("Location: ../login.php");
     exit();
 }
 
+if ($_SESSION['user_type'] != 'user') {
+    header("Location: " . BASE_URL . "index.php");
+    exit();
+}
 $user_id = $_SESSION['user_id'];
 $error = $success = '';
 
@@ -58,32 +62,10 @@ $user = $result->fetch_assoc();
 <?php if ($success): ?>
 <div class="alert alert-success"><?php echo $success; ?></div>
 <?php endif; ?>
-<div class="container mt-5">
-    <h3>الإشعارات</h3>
-    <?php
-    $stmt = $conn->prepare("
-        SELECT * FROM notifications 
-        WHERE user_id = ? 
-        ORDER BY created_at DESC
-    ");
-    $stmt->bind_param("i", $_SESSION['user_id']);
-    $stmt->execute();
-    $notifications = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
-    ?>
-    
-    <?php foreach ($notifications as $notif): ?>
-    <div class="card mb-2 <?= $notif['is_read'] ? '' : 'border-primary' ?>">
-        <div class="card-body">
-            <p><?= $notif['message'] ?></p>
-            <?php if ($notif['link']): ?>
-            <a href="<?= $notif['link'] ?>" class="btn btn-sm btn-outline-primary">
-                الانتقال <i class="fas fa-arrow-left"></i>
-            </a>
-            <?php endif; ?>
-        </div>
-    </div>
-    <?php endforeach; ?>
-</div>
+
+<!-- داخل ملف profile.php -->
+<!-- واجهة اختيار التصنيفات -->
+
 
 <form method="POST" action="">
     <div class="mb-3">

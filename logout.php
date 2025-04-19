@@ -12,7 +12,6 @@ if (isset($_COOKIE[session_name()])) {
 
 // تدمير الجلسة
 session_destroy();
-
 // التوجيه مع إضافة header لمنع التخزين المؤقت
 header("Cache-Control: no-cache, no-store, must-revalidate");
 header("Pragma: no-cache");

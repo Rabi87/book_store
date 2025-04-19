@@ -102,7 +102,7 @@ $result = $conn->query($sql);
 <div class="container mt-5">
     <?php include __DIR__ . '/../includes/alerts.php'; ?>
     <!-- جدول عرض الكتب -->
-     <table class="table table-striped">
+    <table class="table table-striped">
         <thead>
             <tr>
                 <th>العنوان</th>
@@ -127,12 +127,13 @@ $result = $conn->query($sql);
                 echo '<td>'.$row['price'].' ر.س</td>';
                 echo '<td>
                         <a href="edit_book.php?id='.$row['id'].'" class="btn btn-sm btn-warning">تعديل</a>
+                        
                         <a href="?delete='.$row['id'].'" class="btn btn-sm btn-danger" onclick="return confirm(\'هل أنت متأكد؟\')">حذف</a>
                       </td>';
                 echo '</tr>';
             }
             ?>
-            </tbody>
+        </tbody>
     </table>
     <!-- روابط الترقيم -->
     <div class="pagination">
@@ -171,10 +172,10 @@ $result = $conn->query($sql);
             <select name="category_id" class="form-select" required>
                 <option value="">اختر التصنيف</option>
                 <?php
-    $categories = $conn->query("SELECT * FROM categories");
-    while ($cat = $categories->fetch_assoc()):
-    ?>
-                <option value="<?= $cat['category_id'] ?>">
+                    $categories = $conn->query("SELECT * FROM categories");
+                    while ($cat = $categories->fetch_assoc()):
+                    ?>
+                    <option value="<?= $cat['category_id'] ?>">
                     <?= htmlspecialchars($cat['category_name']) ?>
                 </option>
                 <?php endwhile; ?>
@@ -188,6 +189,16 @@ $result = $conn->query($sql);
         </div>
         <div class="col-md-6 mb-3">
             <input type="file" name="cover_image" class="form-control" required>
+        </div>
+        <div class="col-md-6 mb-3">
+            <input type="file" name="file_path" class="form-control" required>
+        </div>
+        <div class="col-md-6 mb-3">
+            <textarea name="description" placeholder="الوصف" class="form-control" required></textarea>
+        </div>
+        <div class="col-md-6 mb-3">
+            <input type="number" step="0.1" name="evaluation" placeholder="التقييم (من 1 إلى 5)" class="form-control"
+                min="1" max="5">
         </div>
         <div class="col-md-12">
             <button type="submit" name="add_book" class="btn btn-primary">إضافة كتاب</button>

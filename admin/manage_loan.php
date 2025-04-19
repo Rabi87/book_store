@@ -39,46 +39,47 @@ require __DIR__ . '/../includes/functions.php';
 <div class="container mt-5">
     <?php include __DIR__ . '/../includes/alerts.php'; ?>
     <!-- جدول عرض الكتب -->
-     <table class="table table-striped">
+    <table class="table table-striped">
         <thead>
             <tr>
-                    <th>#</th>
-                    <th>المستخدم</th>
-                    <th>الكتاب</th>
-                    <th>تاريخ الطلب</th>
-                    <th>الحالة</th>
-                    <th>الإجراءات</th>
-                </tr>
-            </thead>
-            <tbody>
-                <?php foreach ($requests as $index => $request): ?>
-                <tr>
-                    <td><?= $index + 1 ?></td>
-                    <td><?= htmlspecialchars($request['user_name']) ?></td>
-                    <td><?= htmlspecialchars($request['book_title']) ?></td>
-                    <td><?= date('Y/m/d H:i', strtotime($request['request_date'])) ?></td>
-                    <td>
-                        <span class="badge bg-<?= getStatusColor($request['status']) ?>">
-                            <?= getStatusText($request['status']) ?>
-                        </span>
-                    </td>
-                    <td>
-                        <form method="POST" action="<?= BASE_URL ?>admin/process_request.php" class="d-flex gap-2">
-                            <input type="hidden" name="request_id" value="<?= $request['request_id'] ?>">
-                            <select name="action" class="form-select form-select-sm" required>
-                                <option value="approve" <?= $request['status'] === 'approved' ? 'disabled' : '' ?>>
-                                    موافقة</option>
-                                <option value="reject" <?= $request['status'] === 'rejected' ? 'disabled' : '' ?>>رفض
-                                </option>
-                            </select>
-                            <button type="submit" class="btn btn-sm btn-primary">
-                                <i class="fas fa-save"></i>
-                            </button>
-                        </form>
-                    </td>
-                </tr>
-                <?php endforeach; ?>
-            </tbody>
-        </table>
-    
+                <th>#</th>
+                <th>المستخدم</th>
+                <th>الكتاب</th>
+                <th>تاريخ الطلب</th>
+                <th>الحالة</th>
+                <th>الإجراءات</th>
+            </tr>
+        </thead>
+        <tbody>
+            <?php foreach ($requests as $index => $request): ?>
+            <tr>
+                <td><?= $index + 1 ?></td>
+                <td><?= htmlspecialchars($request['user_name']) ?></td>
+                <td><?= htmlspecialchars($request['book_title']) ?></td>
+                <td><?= date('Y/m/d H:i', strtotime($request['request_date'])) ?></td>
+                <td>
+                    <span class="badge bg-<?= getStatusColor($request['status']) ?>">
+                        <?= getStatusText($request['status']) ?>
+                    </span>
+                </td>
+                <td>
+                    <form method="POST" action="<?= BASE_URL ?>admin/process_request.php" class="d-flex gap-2">
+                        <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?>">
+                        <input type="hidden" name="request_id" value="<?= $request['request_id'] ?>">
+                        <select name="action" class="form-select form-select-sm" required>
+                            <option value="approve" <?= $request['status'] === 'approved' ? 'disabled' : '' ?>>
+                                موافقة</option>
+                            <option value="reject" <?= $request['status'] === 'rejected' ? 'disabled' : '' ?>>رفض
+                            </option>
+                        </select>
+                        <button type="submit" class="btn btn-sm btn-primary">
+                            <i class="fas fa-save"></i>
+                        </button>
+                    </form>
+                </td>
+            </tr>
+            <?php endforeach; ?>
+        </tbody>
+    </table>
+
 </div>
