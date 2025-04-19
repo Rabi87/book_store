@@ -7,8 +7,7 @@
                 <!-- القسم الأول: عن الموقع -->
                 <div class="col-md-4">
                     <h5 class="text-muted">عن الموقع</h5>
-                    <p class="text-secondary"> هذا النص هو مثال لنص يمكن أن يستبدل في نفس المساحة، لقد تم توليد هذا النص
-                        من مولد النص العربى. </p>
+                    <p class="text-secondary"> يتيح لك الموقع استعارة و شراء الكتب الإلكترونية, إضافة لإنشاء مجموعات خاصة مع الأعضاء لمشاركة الكتب. </p>
                 </div> <!-- القسم الثاني: روابط سريعة -->
                 <div class="col-md-4">
                     <h5 class="text-muted">روابط سريعة</h5>
@@ -44,6 +43,7 @@
     <script src="<?= BASE_URL ?>assets/bootstrap/js/popper.min.js"></script>
     <script src="<?= BASE_URL ?>assets/bootstrap/js/jquery-3.7.1.min.js"></script>
     <script src="<?= BASE_URL ?>assets/bootstrap/js/bootstrap.js"></script>
+   
 </footer> <!-- المكتبات البرمجية -->
 
 </body>

@@ -3,97 +3,45 @@ session_start();
 require __DIR__ . '/includes/config.php';
 require __DIR__ . '/includes/header.php';
 
-// معالجة معاملات البحث والتصفية
-$search = $_GET['search'] ?? '';
-$category_filter = $_GET['category'] ?? 'all';
-
-// بناء الاستعلام الأساسي
-$base_query = "
+// استعلام لجلب الكتب الكلي
+$physical_books = $conn->query("
     SELECT 
         books.*, 
-        categories.category_name,
-        books.price,
-        books.description,
-        books.cover_image 
+        categories.category_name 
     FROM books
     INNER JOIN categories 
-        ON books.category_id = categories.category_id
-    WHERE (books.type = 'physical' AND books.quantity > 0) 
-    OR books.type = 'e-book'
-";
-
-$params = [];
-$types = '';
-
-// إضافة شروط البحث
-if (!empty($search)) {
-    $base_query .= " AND (books.title LIKE ? OR books.author LIKE ?)";
-    $search_term = "%$search%";
-    array_push($params, $search_term, $search_term);
-    $types .= 'ss';
-}
-
-// إضافة فلتر التصنيف
-if ($category_filter !== 'all') {
-    $base_query .= " AND categories.category_id = ?";
-    array_push($params, $category_filter);
-    $types .= 'i';
-}
-
-// دالة مساعدة لتنفيذ الاستعلامات
-function executeQuery($conn, $query, $params, $types) {
-    $stmt = $conn->prepare($query);
-    if (!$stmt) {
-        die("خطأ في إعداد الاستعلام: " . $conn->error);
-    }
-    if ($types) {
-        $stmt->bind_param($types, ...$params);
-    }
-    $stmt->execute();
-    return $stmt->get_result();
-}
-
-// تنفيذ الاستعلامات
-$physical_books = executeQuery($conn, $base_query . " AND books.type = 'physical'", $params, $types);
-$e_books = executeQuery($conn, $base_query . " AND books.type = 'e-book'", $params, $types);
+        ON books.category_id = categories.category_id 
+");
 
 // جلب الكتب المقترحة
 $recommended_books = [];
 if (isset($_SESSION['user_id'])) {
-    $query = "
-    SELECT 
-        b.*, 
-        categories.category_name 
-    FROM books b
-    JOIN user_categories uc 
-        ON b.category_id = uc.category_id
-    INNER JOIN categories 
-        ON b.category_id = categories.category_id
-    WHERE uc.user_id = ?
-";
-    $stmt = $conn->prepare($query);
+    $stmt = $conn->prepare("
+        SELECT 
+            b.*, 
+            categories.category_name 
+        FROM books b
+        JOIN user_categories uc 
+            ON b.category_id = uc.category_id
+        INNER JOIN categories 
+            ON b.category_id = categories.category_id
+        WHERE uc.user_id = ?
+    ");
     $stmt->bind_param("i", $_SESSION['user_id']);
     $stmt->execute();
     $recommended_books = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
 }
 
-// جلب الكتب المقترحة
-$rated_books = [];
-
-$query = "
-SELECT 
-    b.*, 
-    categories.category_name 
-FROM books b
-INNER JOIN categories 
-    ON b.category_id = categories.category_id
-WHERE b.evaluation > 2
-";
-$stmt = $conn->prepare($query);
-
-$stmt->execute();
-$rated_books = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
-
+// جلب الكتب الأعلى تقييمًا
+$rated_books = $conn->query("
+    SELECT 
+        b.*, 
+        categories.category_name 
+    FROM books b
+    INNER JOIN categories 
+        ON b.category_id = categories.category_id
+    WHERE b.evaluation > 4
+")->fetch_all(MYSQLI_ASSOC);
 ?>
 
 <style>
@@ -157,21 +105,26 @@ $rated_books = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
 
 
 <div>
-    <!-- شريط البحث (معدل باستخدام Bootstrap) -->
-    <div class="home-search mb-4 text-center">
-        <input type="text" id="searchInput" class="form-control rounded-pill w-100 mx-auto" style="max-width: 400px;"
-            placeholder="ابحث عن كتاب...">
-    </div>
-    <!-- شريط التصنيفات (معدل باستخدام Bootstrap) -->
-    <div class="filter-bar d-flex justify-content-center gap-2 mb-4 flex-wrap">
-        <button class="filter-btn btn btn-outline-primary rounded-pill active" data-category="all">الكل</button>
-        <button class="filter-btn btn btn-outline-primary rounded-pill" data-category="علم النفس">علم النفس</button>
-        <button class="filter-btn btn btn-outline-primary rounded-pill" data-category="تقنية">تقنية</button>
-        <button class="filter-btn btn btn-outline-primary rounded-pill" data-category="تنمية ذاتية">تنمية
-            ذاتية</button>
-        <button class="filter-btn btn btn-outline-primary rounded-pill" data-category="تاريخ">تاريخ</button>
-        <button class="filter-btn btn btn-outline-primary rounded-pill" data-category="تاريخ">...</button>
-    </div>
+   <!-- شريط البحث -->
+<div class="home-search mb-4 text-center">
+    <form id="searchForm" onsubmit="return false;">
+        <input type="text" id="searchInput" class="form-control rounded-pill w-100 mx-auto" 
+            placeholder="ابحث عن كتاب..." autocomplete="off">
+    </form>
+</div>
+
+<!-- تصفية التصنيفات -->
+<div class="filter-bar d-flex justify-content-center gap-2 mb-4 flex-wrap" id="categoryFilter">
+    <button class="filter-btn btn btn-outline-primary rounded-pill active" 
+            data-category="all">الكل</button>
+    <?php
+    $categories = $conn->query("SELECT * FROM categories");
+    while($cat = $categories->fetch_assoc()):
+    ?>
+    <button class="filter-btn btn btn-outline-primary rounded-pill" 
+            data-category="<?= $cat['category_id'] ?>"><?= $cat['category_name'] ?></button>
+    <?php endwhile; ?>
+</div>
 
     <div class="accordion">
         <?php if (!empty($rated_books)): ?>
@@ -463,6 +416,23 @@ $rated_books = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
             const stars = '★'.repeat(rating) + '☆'.repeat(5 - rating);
             document.getElementById('modalRating').innerHTML = stars;
         }
-    </script>
+    
+   
+// دالة مساعدة لإنشاء بطاقات الكتب
+function generateBookCard(book) {
+    return `
+    <div class="flip-card h-100">
+        <div class="flip-inner">
+            <div class="flip-front">
+                <img src="<?= BASE_URL ?>${book.cover_image}" alt="غلاف الكتاب">
+            </div>
+            <div class="flip-back">
+                <!-- باقي محتوى البطاقة -->
+            </div>
+        </div>
+    </div>`;
+}
+</script>
+
 
 <?php require __DIR__ . '/includes/footer.php'; ?>

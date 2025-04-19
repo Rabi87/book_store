@@ -14,7 +14,8 @@ require __DIR__ . '/../includes/header.php';
 <div class="container-fluid">
     <div class="row">
         <!-- إضافة زر الشريط الجانبي -->
-        <button class="btn btn-primary sidebar-toggler d-lg-none" style="display: none;" onclick="toggleSidebar()">
+        <button class="btn btn-primary sidebar-toggler d-lg-none" 
+                style="display: none;" onclick="toggleSidebar()">
             <i class="fas fa-bars"></i>
         </button>
         <!-- الشريط الجانبي -->

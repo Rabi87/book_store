@@ -20,40 +20,43 @@ function isAdmin() {
 
 // ======== معالجة تسجيل المستخدم ========
 if (isset($_POST['register'])) {
+
     try {
-        $name = htmlspecialchars($_POST['name']);
-        $email = filter_var($_POST['email'], FILTER_SANITIZE_EMAIL);
+        // التحقق من البيانات الأساسية
+        $name = $conn->real_escape_string($_POST['name']);
+        $email = $conn->real_escape_string($_POST['email']);
         $password = password_hash($_POST['password'], PASSWORD_DEFAULT);
 
         // التحقق من البريد الإلكتروني
-        $stmt = $conn->prepare("SELECT id FROM users WHERE email = ?");
-        $stmt->bind_param("s", $email);
-        $stmt->execute();
-        
-        if ($stmt->get_result()->num_rows > 0) {
-            $_SESSION['error'] = "البريد الإلكتروني مسجل مسبقًا!";
-            header("Location: register.php");
-            exit();
+        $check = $conn->query("SELECT id FROM users WHERE email = '$email'");
+        if ($check->num_rows > 0) {
+            throw new Exception("البريد الإلكتروني مسجل مسبقًا");
         }
 
-        // إضافة مستخدم جديد
-        $stmt = $conn->prepare("INSERT INTO users (name, email, password, user_type) VALUES (?, ?, ?, 'user')");
-        $stmt->bind_param("sss", $name, $email, $password);
-        
-        if ($stmt->execute()) {
-            $_SESSION['success'] = "تم التسجيل بنجاح!";
-            header("Location: login.php");
-        } else {
-            throw new Exception("فشل في تنفيذ الاستعلام");
+        // إضافة المستخدم
+        $conn->query("INSERT INTO users (name, email, password) VALUES ('$name', '$email', '$password')");
+        $user_id = $conn->insert_id;
+
+        // إضافة التصنيفات المفضلة
+        if (isset($_POST['categories'])) {
+            foreach ($_POST['categories'] as $category_id) {
+                $category_id = (int)$category_id;
+                $conn->query("INSERT INTO user_categories (user_id, category_id) VALUES ($user_id, $category_id)");
+            }
         }
-        
+
+        $_SESSION['success'] = "تم التسجيل بنجاح!";
+        header("Location: login.php");
+
     } catch (Exception $e) {
-        error_log("Registration Error: " . $e->getMessage());
-        $_SESSION['error'] = "حدث خطأ أثناء التسجيل";
+        $_SESSION['error'] = $e->getMessage();
         header("Location: register.php");
     }
     exit();
 }
+
+
+
 
 // ======== معالجة تسجيل الدخول ========
 if (isset($_POST['login'])) {

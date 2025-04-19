@@ -94,12 +94,12 @@ require __DIR__ . '/../includes/header.php';
 
 <!-- عرض الرسائل -->
 <?php if (isset($_SESSION['message'])): ?>
-    <div class="container mt-3">
-        <div class="alert alert-info">
-            <?= $_SESSION['message'] ?>
-        </div>
+<div class="container mt-3">
+    <div class="alert alert-info">
+        <?= $_SESSION['message'] ?>
     </div>
-    <?php unset($_SESSION['message']); ?>
+</div>
+<?php unset($_SESSION['message']); ?>
 <?php endif; ?>
 
 <!-- نموذج إنشاء المجموعة -->
@@ -114,72 +114,82 @@ require __DIR__ . '/../includes/header.php';
 
 <!-- جدول جميع المجموعات -->
 <div class="container mt-4">
-    <h3 class="mb-4">جميع المجموعات</h3>
-    <table class="table table-bordered table-striped">
-        <thead class="table-dark">
-            <tr>
-                <th>اسم المجموعة</th>
-                <th>الإجراء</th>
-                <th>المحتويات</th>
-            </tr>
-        </thead>
-        <tbody>
-            <?php foreach ($allGroups as $group): 
+    <div class="notifications-scroll-container">
+        <table class="table table-bordered table-striped">
+            <thead class="table-dark">
+                <tr>
+                    <th>اسم المجموعة</th>
+                    <th>الإجراء</th>
+                    <th>المحتويات</th>
+                </tr>
+            </thead>
+            <tbody>
+                <?php foreach ($allGroups as $group): 
                 $isMember = in_array($group['group_id'], $userGroupIds);
                 $isPending = in_array($group['group_id'], $pendingGroupIds);
                 $isOwner = ($group['owner_id'] == $_SESSION['user_id']);
             ?>
-            <tr>
-                <td><?= htmlspecialchars($group['group_name']) ?></td>
-                <td>
-                    <?php if ($isMember): ?>
+                <tr>
+                    <td><?= htmlspecialchars($group['group_name']) ?></td>
+                    <td>
+                        <?php if ($isMember): ?>
                         <?php if (!$isOwner): ?>
-                            <form method="POST" style="display:inline;">
-                                <input type="hidden" name="group_id" value="<?= $group['group_id'] ?>">
-                                <button type="submit" name="leave_group" class="btn btn-warning btn-sm">
-                                    <i class="fas fa-sign-out-alt"></i> مغادرة
-                                </button>
-                            </form>
+                        <form method="POST" style="display:inline;">
+                            <input type="hidden" name="group_id" value="<?= $group['group_id'] ?>">
+                            <button type="submit" name="leave_group" class="btn btn-warning btn-sm">
+                                <i class="fas fa-sign-out-alt"></i> مغادرة
+                            </button>
+                        </form>
                         <?php endif; ?>
                         <span class="text-success">عضو</span>
-                    <?php elseif ($isPending): ?>
+                        <?php elseif ($isPending): ?>
                         <span class="text-warning">بانتظار الموافقة</span>
-                    <?php else: ?>
+                        <?php else: ?>
                         <form method="POST" style="display:inline;">
                             <input type="hidden" name="group_id" value="<?= $group['group_id'] ?>">
                             <button type="submit" name="join_group" class="btn btn-success btn-sm">
                                 <i class="fas fa-sign-in-alt"></i> انضم
                             </button>
                         </form>
-                    <?php endif; ?>
+                        <?php endif; ?>
 
-                    <?php if ($isOwner): ?>
-                        <a href="manage_requests.php?group_id=<?= $group['group_id'] ?>" 
-                           class="btn btn-info btn-sm mt-1">
+                        <?php if ($isOwner): ?>
+                        <a href="manage_requests.php?group_id=<?= $group['group_id'] ?>"
+                            class="btn btn-info btn-sm mt-1">
                             <i class="fas fa-tasks"></i> إدارة الطلبات
                         </a>
-                        <a href="manage_members.php?group_id=<?= $group['group_id'] ?>" 
-   class="btn btn-warning btn-sm mt-1">
-    <i class="fas fa-users-cog"></i> إدارة الأعضاء
-</a>
-                    <?php endif; ?>
-                </td>
-                <td>
-                    <?php if ($isMember): ?>
-                        <a href="group_books.php?code=<?= $group['unique_code'] ?>" 
-                           class="btn btn-primary btn-sm">
+                        <a href="manage_members.php?group_id=<?= $group['group_id'] ?>"
+                            class="btn btn-warning btn-sm mt-1">
+                            <i class="fas fa-users-cog"></i> إدارة الأعضاء
+                        </a>
+                        <?php endif; ?>
+                    </td>
+                    <td>
+                        <?php if ($isMember): ?>
+                        <a href="group_books.php?code=<?= $group['unique_code'] ?>" class="btn btn-primary btn-sm">
                             <i class="fas fa-book-open"></i> عرض الكتب
                         </a>
-                    <?php else: ?>
+                        <?php else: ?>
                         <button class="btn btn-secondary btn-sm" disabled>
                             <i class="fas fa-book-open"></i> عرض الكتب
                         </button>
-                    <?php endif; ?>
-                </td>
-            </tr>
-            <?php endforeach; ?>
-        </tbody>
-    </table>
+                        <?php endif; ?>
+                    </td>
+                </tr>
+                <?php endforeach; ?>
+            </tbody>
+        </table>
+    </div>
 </div>
+<style>
+.notifications-scroll-container {
+    max-height: 350px;
+    /* تحديد أقصى ارتفاع */
+    overflow-y: auto;
+    /* التمرير التلقائي */
+    padding-right: 0.5rem;
+    /* منع قص المحتوى */
+}
+</style>
 
 <?php require __DIR__ . '/../includes/footer.php'; ?>

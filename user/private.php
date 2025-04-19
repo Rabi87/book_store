@@ -37,7 +37,7 @@ $categories = $conn->query("SELECT * FROM categories");
 
 <!-- واجهة اختيار التصنيفات -->
 <form method="POST" action="save_categories.php">
-    <h4 class="mt-4">📚 اختر تخصصاتك المفضلة</h4>
+    <h4 class="mt-4">اختر تخصصاتك المفضلة</h4>
     <div class="row">
         <?php while ($cat = $categories->fetch_assoc()): ?>
         <div class="col-md-4 mb-3">

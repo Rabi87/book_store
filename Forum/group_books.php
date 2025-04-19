@@ -74,7 +74,7 @@ require __DIR__ . '/../includes/header.php';
 <div class="container mt-4">
     <h3>
         كتب المجموعة
-        <a href="manage_groups.php" class="btn btn-secondary btn-sm float-left">العودة للمجموعات</a>
+        <a href="<?= BASE_URL ?>manage_groups.php" class="btn btn-secondary btn-sm float-left">العودة للمجموعات</a>
     
     </h3>
     
@@ -117,3 +117,4 @@ require __DIR__ . '/../includes/header.php';
         </tbody>
     </table>
 </div>
+<?php require __DIR__ . '/../includes/footer.php'; ?>

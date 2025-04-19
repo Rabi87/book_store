@@ -2,7 +2,6 @@
 session_start();
 require __DIR__ . '/includes/config.php';
 
-
 // التحقق من تسجيل الدخول
 if (!isset($_SESSION['user_id'])) {
     header("Location: login.php");
@@ -12,6 +11,11 @@ if (!isset($_SESSION['user_id'])) {
 // ━━━━━━━━━━ معالجة إرسال التقييم ━━━━━━━━━━
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['submit_rating'])) {
     try {
+        // طباعة القيم المرسلة للتحقق
+        echo "<pre>";
+        print_r($_POST);
+        echo "</pre>";
+        
         $request_id = (int)$_POST['request_id'];
         $rating = (int)$_POST['rating'];
         $comment = htmlspecialchars($_POST['comment']);
@@ -83,6 +87,42 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['submit_rating'])) {
     }
 }
 
+// ━━━━━━━━━━ معالجة إتمام القراءة ━━━━━━━━━━
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['complete_reading'])) {
+    try {
+        $request_id = (int)$_POST['request_id'];
+        $user_id = $_SESSION['user_id'];
+
+        // التحقق من ملكية الطلب
+        $stmt_check = $conn->prepare("
+            UPDATE borrow_requests 
+            SET 
+                reading_completed = 1,
+                due_date = NOW()
+            WHERE 
+                id = ? 
+                AND user_id = ?
+                AND reading_completed = 0 
+        ");
+        $stmt_check->bind_param("ii", $request_id, $user_id);
+        $stmt_check->execute();
+
+        if ($stmt_check->affected_rows > 0) {
+            $_SESSION['success'] = "تم تسجيل إتمام القراءة بنجاح!";
+        } else {
+            $_SESSION['error'] = "لم يتم العثور على الطلب أو تم تسجيله مسبقاً!";
+        }
+
+        header("Location: read_book.php?request_id=" . $request_id);
+        exit();
+
+    } catch (Exception $e) {
+        $_SESSION['error'] = "حدث خطأ: " . $e->getMessage();
+        header("Location: read_book.php?request_id=" . $request_id);
+        exit();
+    }
+}
+
 // ━━━━━━━━━━ جلب بيانات الكتاب وعرضه ━━━━━━━━━━
 $request_id = (int)$_GET['request_id'];
 $user_id = $_SESSION['user_id'];
@@ -117,74 +157,143 @@ try {
 ?>
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
+
 <head>
     <meta charset="UTF-8">
     <title><?= htmlspecialchars($book['title']) ?></title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="<?= BASE_URL ?>assets/bootstrap/css/bootstrap.css" rel="stylesheet">
+    <link href="<?= BASE_URL ?>assets/css/style.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
-        .book-container {
-            margin: 20px auto;
-            max-width: 800px;
-        }
-        .rating-form {
-            margin-top: 30px;
-            padding: 20px;
-            border: 1px solid #ddd;
-            border-radius: 8px;
-        }
+    .star-rating {
+        display: flex;
+        align-items: center;
+        gap: 5px;
+    }
+
+    .star-rating label {
+        font-size: 24px;
+        color: #ccc;
+        cursor: pointer;
+        transition: color 0.3s;
+    }
+
+    .star-rating input[type="radio"] {
+        display: none;
+    }
+
+    .star-rating input[type="radio"]:checked~label,
+    .star-rating label:hover,
+    .star-rating label:hover~label {
+        color: #ffcc00;
+    }
+
+    .rating-display {
+        margin-top: 10px;
+        font-size: 18px;
+        color: #333;
+    }
+
+    .card {
+        position: relative;
+        user-select: none;
+        /* منع تحديد النص */
+    }
+
+    .card::after {
+        content: "";
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        z-index: 999;
+        pointer-events: none;
+        /* لا يؤثر على تفاعل الـ iframe */
+    }
     </style>
 </head>
+
 <body>
     <div class="container book-container">
-        <!-- عرض الملف -->
-        <div class="card">
-            <div class="card-body">
-                <h3 class="card-title"><?= htmlspecialchars($book['title']) ?></h3>
-                <embed 
-                    src="<?= htmlspecialchars($file_path) ?>" 
-                    type="application/pdf" 
-                    width="100%" 
-                    height="600px"
-                >
+        <!-- التعديل على الهيكل -->
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <!-- زر العودة على اليسار -->
+
+            <form method="POST" style="display: inline;">
+                <input type="hidden" name="request_id" value="<?= $request_id ?>">
+                <button type="submit" name="complete_reading" class="btn btn-primary btn-sm">تمت القراءة</button>
+            </form>
+            <!-- نموذج التقييم مع التعديلات -->
+            <div class="rating-form">
+                <form method="POST" class="d-flex align-items-center gap-2">
+                    <input type="hidden" name="request_id" value="<?= $request_id ?>">
+
+                    <!-- النجوم -->
+                    <div class="star-rating">
+                        <input type="radio" id="star5" name="rating" value="5" required>
+                        <label for="star5"><i class="fas fa-star"></i></label>
+                        <input type="radio" id="star4" name="rating" value="4">
+                        <label for="star4"><i class="fas fa-star"></i></label>
+                        <input type="radio" id="star3" name="rating" value="3">
+                        <label for="star3"><i class="fas fa-star"></i></label>
+                        <input type="radio" id="star2" name="rating" value="2">
+                        <label for="star2"><i class="fas fa-star"></i></label>
+                        <input type="radio" id="star1" name="rating" value="1">
+                        <label for="star1"><i class="fas fa-star"></i></label>
+                    </div>
+
+                    <!-- زر الصوت -->
+                    <button type="submit" name="submit_rating" class="btn btn-info btn-sm">صوُت</button>
+                </form>
+            </div>
+
+            <!-- العناصر على اليمين في مجموعة واحدة -->
+            <div class="d-flex align-items-center gap-2">
+                <!-- زر تمت القراءة -->
+                <a href="user/dashboard.php" class="btn btn-secondary btn-sm">العودة للمجموعات</a>
+
+
             </div>
         </div>
 
-        <!-- نموذج التقييم -->
-        <div class="rating-form">
-            <?php if (isset($_SESSION['success'])): ?>
-                <div class="alert alert-success"><?= $_SESSION['success'] ?></div>
-                <?php unset($_SESSION['success']); ?>
-            <?php endif; ?>
+        <!-- الرسائل التحذيرية تبقى خارج التنسيق -->
+        <?php if (isset($_SESSION['success'])): ?>
+        <div class="alert alert-success"><?= $_SESSION['success'] ?></div>
+        <?php unset($_SESSION['success']); ?>
+        <?php endif; ?>
 
-            <?php if (isset($_SESSION['error'])): ?>
-                <div class="alert alert-danger"><?= $_SESSION['error'] ?></div>
-                <?php unset($_SESSION['error']); ?>
-            <?php endif; ?>
-
-            <form method="POST">
-                <input type="hidden" name="request_id" value="<?= $request_id ?>">
-                
-                <div class="mb-3">
-                    <label class="form-label">التقييم:</label>
-                    <select name="rating" class="form-select" required>
-                        <option value="5">★★★★★</option>
-                        <option value="4">★★★★</option>
-                        <option value="3">★★★</option>
-                        <option value="2">★★</option>
-                        <option value="1">★</option>
-                    </select>
-                </div>
-
-                <div class="mb-3">
-                    <label class="form-label">تعليقك:</label>
-                    <textarea name="comment" class="form-control" rows="3"></textarea>
-                </div>
-
-                <button type="submit" name="submit_rating" class="btn btn-primary w-100">
-                    إرسال التقييم
-                </button>
-            </form>
+        <?php if (isset($_SESSION['error'])): ?>
+        <div class="alert alert-danger"><?= $_SESSION['error'] ?></div>
+        <?php unset($_SESSION['error']); ?>
+        <?php endif; ?>
+        <!-- عرض الملف -->
+        <div class="card" style="position: relative;">
+            <div class="card-body">
+                <h3 class="card-title"><?= htmlspecialchars($book['title']) ?></h3>
+                <iframe src="<?= htmlspecialchars($file_path) ?>#toolbar=0&navpanes=0" width="100%" height="600px"
+                    frameborder="0"></iframe>
+            </div>
         </div>
     </div>
+
+
+    <!-- إضافة JavaScript لتحديث التقييم -->
+    <script>
+    document.addEventListener('contextmenu', (e) => e.preventDefault());
+    const ratingInputs = document.querySelectorAll('input[name="rating"]');
+    const selectedRatingDisplay = document.getElementById('selected-rating');
+
+    ratingInputs.forEach(input => {
+        input.addEventListener('change', () => {
+            if (input.checked) {
+                selectedRatingDisplay.textContent = input.value + ' نجوم';
+            }
+        });
+    });
+    </script>
+
 </body>
+
 </html>

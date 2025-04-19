@@ -462,11 +462,15 @@ body {
     margin: 0;
     font-size: 1.1em;
 }
-.sidebar { background: #f8f9fa; min-height: 100vh; }
-.sidebar .btn { text-align: right; width: 100%; margin: 2px 0; }
+.sidebar { background: #f8f9fa; min-height: 50vh; }
+.sidebar .btn { text-align: right; width: 100%; margin: 2px 0;border-radius: 20px; }
 .content-section { display: none; }
 .content-section.active { display: block; }
 .dashboard-container { padding: 20px; }
+.sidebar {
+    position: sticky;
+    top: 0;
+}
 
 /* إضافة تحسينات للشاشات الصغيرة */
 @media (max-width: 992px) {
@@ -703,3 +707,15 @@ body {
     padding: 20px;
     background-color: #fff;
 }
+.filter-btn.active {
+    background-color: #0d6efd;
+    color: white !important;
+}
+
+#searchInput.loading {
+    background-image: url('loading.gif');
+    background-position: right 10px center;
+    background-repeat: no-repeat;
+    background-size: 20px;
+}
+

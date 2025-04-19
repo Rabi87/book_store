@@ -98,7 +98,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
 
             // إضافة إشعار للمستخدم
-            $message = "يمكنك تصفح كتاب $book_title على الرابط التالي";  $payment_link = BASE_URL . "read_book.php?request_id=" . $request_id;
+            $message = "يمكنك تصفح كتاب $book_title على الرابط التالي"; 
+            $payment_link = BASE_URL . "read_book.php?request_id=" . $request_id;
             
             $stmt_notif = $conn->prepare("
                 INSERT INTO notifications (user_id, message, link)
