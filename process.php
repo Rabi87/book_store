@@ -1,7 +1,12 @@
 <?php
-session_start();
-require __DIR__ . '/includes/db_logger.php';
+
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();}
+   
+
 require __DIR__ . '/includes/config.php';
+require __DIR__ . '/includes/db_logger.php';
+
 
 //if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     // التحقق من وجود CSRF Token في الطلب والجلسة
@@ -9,9 +14,7 @@ require __DIR__ . '/includes/config.php';
   //      die("Invalid CSRF Token");
   //  }
 //}
-error_reporting(E_ALL);
-ini_set('display_errors', 1);
-ini_set('display_startup_errors', 1);
+// إيقاف عرض الأخطاء للمستخدمين
 
 // التحقق من صلاحيات الأدمن
 function isAdmin() {
@@ -20,47 +23,76 @@ function isAdmin() {
 
 // ======== معالجة تسجيل المستخدم ========
 if (isset($_POST['register'])) {
+    // إعادة تعيين متغيرات الجلسة للتأكد من نظافتها
+    unset($_SESSION['error']);
+    unset($_SESSION['success']);
 
     try {
         // التحقق من البيانات الأساسية
-        $name = $conn->real_escape_string($_POST['name']);
-        $email = $conn->real_escape_string($_POST['email']);
+        $name = $_POST['name'];
+        $email = $_POST['email'];
         $password = password_hash($_POST['password'], PASSWORD_DEFAULT);
 
-        // التحقق من البريد الإلكتروني
-        $check = $conn->query("SELECT id FROM users WHERE email = '$email'");
-        if ($check->num_rows > 0) {
-            throw new Exception("البريد الإلكتروني مسجل مسبقًا");
+        // ----------- التحقق من البريد الإلكتروني واسم المستخدم -----------
+        $check_stmt = $conn->prepare("SELECT email, name FROM users WHERE email = ? OR name = ?");
+        $check_stmt->bind_param("ss", $email, $name);
+        $check_stmt->execute();
+        $check_result = $check_stmt->get_result();
+        if ($check_result->num_rows > 0) {
+            $row = $check_result->fetch_assoc();
+            if ($row['email'] === $email) {
+                throw new Exception("البريد الإلكتروني مسجل مسبقًا");
+            } elseif ($row['name'] === $name) {
+                throw new Exception("اسم المستخدم مسجل مسبقًا");
+            }
         }
+        $check_stmt->close();
 
-        // إضافة المستخدم
-        $conn->query("INSERT INTO users (name, email, password) VALUES ('$name', '$email', '$password')");
-        $user_id = $conn->insert_id;
+        // ----------- إضافة المستخدم -----------
+        $insert_stmt = $conn->prepare("INSERT INTO users (name, email, password) VALUES (?, ?, ?)");
+        $insert_stmt->bind_param("sss", $name, $email, $password);
+        
+        if (!$insert_stmt->execute()) {
+            throw new Exception("فشل في تسجيل المستخدم");
+        }
+        
+        $user_id = $insert_stmt->insert_id;
+        $insert_stmt->close();
 
-        // إضافة التصنيفات المفضلة
+        // ----------- إضافة التصنيفات المفضلة -----------
         if (isset($_POST['categories'])) {
+            $category_stmt = $conn->prepare("INSERT INTO user_categories (user_id, category_id) VALUES (?, ?)");
+            
             foreach ($_POST['categories'] as $category_id) {
                 $category_id = (int)$category_id;
-                $conn->query("INSERT INTO user_categories (user_id, category_id) VALUES ($user_id, $category_id)");
+                $category_stmt->bind_param("ii", $user_id, $category_id);
+                
+                if (!$category_stmt->execute()) {
+                    throw new Exception("فشل في إضافة التصنيفات");
+                }
             }
+            $category_stmt->close();
         }
 
         $_SESSION['success'] = "تم التسجيل بنجاح!";
         header("Location: login.php");
-
+        exit();
     } catch (Exception $e) {
+        // إغلاق أي statements مفتوحة في حالة الخطأ
+        if (isset($check_stmt)) $check_stmt->close();
+        if (isset($insert_stmt)) $insert_stmt->close();
+        if (isset($category_stmt)) $category_stmt->close();
+        
         $_SESSION['error'] = $e->getMessage();
         header("Location: register.php");
+        exit();
     }
-    exit();
 }
-
-
-
 
 // ======== معالجة تسجيل الدخول ========
 if (isset($_POST['login'])) {
-    $name = $conn->real_escape_string($_POST['name']);
+
+    $name = $_POST['name'];
     $password = $_POST['password'];
     
     try {
@@ -74,6 +106,7 @@ if (isset($_POST['login'])) {
         }
         
         $user = $result->fetch_assoc();
+        
         if (!password_verify($password, $user['password'])) {
             throw new Exception("كلمة المرور خاطئة");
         }
@@ -82,6 +115,30 @@ if (isset($_POST['login'])) {
         $_SESSION['user_id'] = $user['id'];
         $_SESSION['user_name'] = $user['name'];
         $_SESSION['user_type'] = $user['user_type'];
+
+       // ━━━━━━━━━━ تفعيل تذكرني ━━━━━━━━━━
+        if (isset($_POST['remember_me'])) {
+            // توليد token فريد
+            $token = bin2hex(random_bytes(64));
+            $expiry = time() + 30 * 24 * 3600; // 30 يومًا
+
+            // تخزين الtoken في قاعدة البيانات
+            $update_stmt = $conn->prepare("UPDATE users SET remember_token = ? WHERE id = ?");
+            $update_stmt->bind_param("si", $token, $user['id']);
+            $update_stmt->execute();
+            $update_stmt->close();
+
+            // تعيين الكوكي (Secure و HttpOnly)
+            setcookie(
+                'remember_me',
+                $token,
+                $expiry,
+                '/',
+                '',
+                true, // Secure (يجب أن يكون HTTPS مفعل)
+                true  // HttpOnly
+            );
+        }
         
         DatabaseLogger::log(
             'login_success',
@@ -99,6 +156,103 @@ if (isset($_POST['login'])) {
         );
         $_SESSION['error'] = "بيانات الدخول غير صحيحة";
         header("Location: login.php");
+    }
+    exit();
+}
+
+// ======== معالجة نسيان كلمة المرور ========
+if (isset($_POST['forget_password'])) {
+    $email = $_POST['email'];
+
+    try {
+        // التحقق من وجود البريد الإلكتروني
+        $stmt = $conn->prepare("SELECT id FROM users WHERE email = ?");
+        $stmt->bind_param("s", $email);
+        $stmt->execute();
+        $result = $stmt->get_result();
+
+        if ($result->num_rows === 0) {
+            throw new Exception("البريد الإلكتروني غير مسجل");
+        }
+
+        $user = $result->fetch_assoc();
+        $token = bin2hex(random_bytes(50)); // توليد رمز فريد
+        $expires = date("Y-m-d H:i:s", strtotime("+1 hour")); // صلاحية ساعة
+
+        // حفظ الرمز في قاعدة البيانات
+        $conn->query("
+            UPDATE users 
+            SET 
+                password_reset_token = '$token',
+                password_reset_expires = '$expires' 
+            WHERE id = {$user['id']}
+        ");
+       
+
+        // إرسال البريد الإلكتروني (يجب استبدال هذا الجزء بآلية إرسال حقيقية)
+        $reset_link = BASE_URL . "reset_password.php?token=$token";
+        $_SESSION['reset_link'] = $reset_link; // حفظ الرابط في الجلسة
+       
+
+        // mail($email, "استعادة كلمة المرور", "الرجاء الضغط على الرابط: $reset_link");
+
+        $_SESSION['success'] = "تم إرسال رابط الاستعادة إلى بريدك الإلكتروني";
+        header("Location: " . BASE_URL . "forget_password_confirmation.php");
+        
+
+    } catch (Exception $e) {
+        $_SESSION['error'] = $e->getMessage();
+        header("Location: forget_password.php");
+    }
+    exit();
+}
+
+// ======== معالجة تعيين كلمة المرور ========
+if (isset($_POST['reset_password'])) {
+    $token = $_POST['token'];
+    $new_password = $_POST['new_password'];
+    $confirm_password = $_POST['confirm_password'];
+
+    try {
+        if ($new_password !== $confirm_password) {
+            throw new Exception("كلمتا المرور غير متطابقتين");
+        }
+
+        // التحقق من الرمز ومدى صلاحيته
+        $stmt = $conn->prepare("
+            SELECT id 
+            FROM users 
+            WHERE 
+                password_reset_token = ? 
+                AND password_reset_expires > NOW()
+        ");
+        $stmt->bind_param("s", $token);
+        $stmt->execute();
+        $result = $stmt->get_result();
+
+        if ($result->num_rows === 0) {
+            throw new Exception("الرابط غير صالح أو منتهي الصلاحية");
+        }
+
+        $user = $result->fetch_assoc();
+        $hashed_password = password_hash($new_password, PASSWORD_DEFAULT);
+
+        // تحديث كلمة المرور وإزالة الرمز
+        $conn->query("
+            UPDATE users 
+            SET 
+                password = '$hashed_password',
+                password_reset_token = NULL,
+                password_reset_expires = NULL 
+            WHERE id = {$user['id']}
+        ");
+
+        $_SESSION['success'] = "تم تعيين كلمة المرور بنجاح!";
+        header("Location: login.php");
+
+    } catch (Exception $e) {
+        $_SESSION['error'] = $e->getMessage();
+        header("Location: reset_password.php?token=$token");
     }
     exit();
 }
@@ -280,8 +434,6 @@ if (isset($_POST['update_book']) && isAdmin()) {
     exit();
 }
 
-
-
 // ======== معالجة طلب الاستعارة/الشراء ========
 if (isset($_POST['action'])) {
     try {
@@ -294,6 +446,29 @@ if (isset($_POST['action'])) {
         $action = $_POST['action'];
         $required_amount = ($action === 'borrow') ? 5000 : 25000;
         $book_id = (int)$_POST['book_id'];
+
+        // ━━━━━━━━━━ التحقق من عدم وجود استعارة نشطة ━━━━━━━━━━
+        if($action === 'borrow'){
+        $check_borrow = $conn->prepare("
+            SELECT id
+            FROM borrow_requests 
+            WHERE 
+                user_id = ? 
+                AND book_id = ? 
+                AND status IN ('pending', 'approved')
+                AND due_date > NOW() 
+                AND reading_completed = 0
+                
+        ");
+        $check_borrow->bind_param("ii", $_SESSION['user_id'], $book_id);
+        $check_borrow->execute();
+        $borrow_user=$_SESSION['user_id'];
+
+        if ($check_borrow->get_result()->num_rows > 0) {
+            $_SESSION['error'] = "لا يمكنك استعارة هذا الكتاب الآن. لديك استعارة نشطة!";
+            header("Location: index.php"); // أو الصفحة الحالية
+            exit();
+        }}
         
         // التحقق من الرصيد
         $stmt_wallet = $conn->prepare("SELECT balance FROM wallets WHERE user_id = ?");
@@ -318,9 +493,29 @@ if (isset($_POST['action'])) {
         $stmt_request = $conn->prepare("INSERT INTO borrow_requests (user_id, book_id, type, amount) VALUES (?, ?, ?, ?)");
         $stmt_request->bind_param("iisd", $_SESSION['user_id'], $book_id, $action, $required_amount);
         $stmt_request->execute();
+        $request_id = $stmt_request->insert_id; // الحصول على ID الطلب الجديد
+        // إرسال إشعار إلى المدير
+        $admin = $conn->query("SELECT id FROM users WHERE user_type = 'admin' LIMIT 1")->fetch_assoc();
+        if ($admin) {
+            $message = "طلب جديد: " . ($action === 'borrow' ? "استعارة" : "شراء") . " كتاب";
+            $link = BASE_URL . "admin/manage_loan.php";
         
+            $stmt_notif = $conn->prepare("
+                INSERT INTO notifications 
+                (user_id, message, link, request_id, expires_at) 
+                VALUES (?, ?, ?, ?, NOW() + INTERVAL 24 HOUR)
+            ");
+            $stmt_notif->bind_param("issi", $admin['id'], $message, $link, $request_id); // إضافة request_id
+            $stmt_notif->execute();
+        }
         $_SESSION['success'] = "تم إرسال الطلب بنجاح!";
         header("Location: index.php");
+
+        DatabaseLogger::log(
+            'loan_success',
+            $borrow_user,
+            'تم طلب الاستعارة بنجاح'
+        );
         
     } catch (Exception $e) {
         $_SESSION['error'] = "خطأ: " . $e->getMessage();
@@ -329,5 +524,40 @@ if (isset($_POST['action'])) {
     exit();
 }
 
+// ======== معالجة حذف الطلب ========
+if (isset($_POST['delete_request']) && isset($_SESSION['user_id'])) {
+    // التحقق من CSRF Token
+    if (!isset($_POST['csrf_token']) || $_POST['csrf_token'] !== $_SESSION['csrf_token']) {
+        die("طلب غير مصرح به");
+    }
+
+    $request_id = (int)$_POST['request_id'];
+    $user_id = $_SESSION['user_id'];
+
+    try {
+        // التحقق من ملكية الطلب
+        $stmt = $conn->prepare("DELETE FROM borrow_requests WHERE id = ? AND user_id = ? AND status = 'pending'");
+        $stmt->bind_param("ii", $request_id, $user_id);
+        
+        if ($stmt->execute()) {
+            // ━━━━━━━ حذف الإشعارات المرتبطة بالطلب ━━━━━━━
+            $delete_notif = $conn->prepare("DELETE FROM notifications WHERE request_id = ?");
+            $delete_notif->bind_param("i", $request_id);
+            $delete_notif->execute();
+            $delete_notif->close();
+            $_SESSION['success'] = "تم حذف الطلب بنجاح!";
+        } else {
+            throw new Exception("فشل في حذف الطلب");
+        }
+        
+        header("Location:".BASE_URL."user/dashboard.php");
+    } catch (Exception $e) {
+        $_SESSION['error'] = $e->getMessage();
+        header("Location:".BASE_URL."user/dashboard.php");
+    }
+    exit();
+}
+
 // إذا لم يتم التعرف على أي عملية
 die("طلب غير معروف");
+?>

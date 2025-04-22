@@ -10,7 +10,7 @@ $user_id = $_SESSION['user_id'];
 
 // الكتب المستعارة
 $stmt = $conn->prepare("
-    SELECT b.title, b.author, br.request_date, br.due_date, 
+    SELECT b.title, b.author, br.request_date, br.due_date, br.reading_completed,
     DATEDIFF(br.due_date, CURDATE()) AS remaining_days
     FROM borrow_requests br
     JOIN books b ON br.book_id = b.id
@@ -22,7 +22,7 @@ $borrowed_books = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
 
 // الطلبات المعلقة
 $stmt = $conn->prepare("
-    SELECT b.title, b.author, br.request_date 
+    SELECT br.id, b.title, b.author, br.request_date 
     FROM borrow_requests br
     JOIN books b ON br.book_id = b.id
     WHERE br.user_id = ? AND br.status = 'pending'
@@ -48,7 +48,7 @@ require __DIR__ . '/../includes/header.php';
 
             <div class="d-grid gap-2">
                 <button onclick="showSection('main')" class="btn btn-outline-primary active">
-                    <i class="fas fa-home"></i> الرئيسية
+                    <i class="fas fa-index"></i> الرئيسية
                 </button>
 
                 <button onclick="showSection('private')" class="btn btn-outline-danger ">
@@ -121,12 +121,15 @@ require __DIR__ . '/../includes/header.php';
                                     $status_class = '';
                                     $status_text = '';
                                     
-                                    if ($remaining < 0) {
+                                    if ($book['reading_completed'] == TRUE) {
+                                        $status_class = 'returned';
+                                        $status_text = '<span class="text-primary"> تم الإرجاع</span>';
+                                    } elseif  ($remaining < 0) {
                                         $status_class = 'overdue';
                                         $status_text = '<span class="text-danger">متأخر ' . abs($remaining) . ' يوم</span>';
                                     } elseif ($remaining <= 3) {
                                         $status_class = 'due-soon';
-                                        $status_text = '<span class="text-warning">' . $remaining . ' أيام</span>';
+                                        $status_text = '<span class="text-warning">' . $remaining . ' أيام</span>';                                        
                                     } else {
                                         $status_text = $remaining . ' يوم';
                                     }
@@ -156,6 +159,7 @@ require __DIR__ . '/../includes/header.php';
 
                         <?php if(count($pending_requests) > 0): ?>
                         <div class="table-responsive">
+                            <!-- داخل قسم الطلبات المعلقة -->
                             <table class="table table-hover">
                                 <thead class="table-light">
                                     <tr>
@@ -163,6 +167,7 @@ require __DIR__ . '/../includes/header.php';
                                         <th>المؤلف</th>
                                         <th>تاريخ الطلب</th>
                                         <th>الحالة</th>
+                                        <th>إجراءات</th> <!-- عمود جديد -->
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -172,6 +177,18 @@ require __DIR__ . '/../includes/header.php';
                                         <td><?= htmlspecialchars($request['author']) ?></td>
                                         <td><?= date('Y/m/d', strtotime($request['request_date'])) ?></td>
                                         <td><span class="badge bg-warning">قيد المراجعة</span></td>
+                                        <td>
+                                            <form method="POST" action="../process.php"
+                                                onsubmit="return confirm('هل تريد حذف هذا الطلب؟');">
+                                                <input type="hidden" name="request_id" value="<?= $request['id'] ?>">
+                                                <input type="hidden" name="csrf_token"
+                                                    value="<?= $_SESSION['csrf_token'] ?>">
+                                                <button type="submit" name="delete_request"
+                                                    class="btn btn-danger btn-sm">
+                                                    <i class="fas fa-trash"></i> حذف
+                                                </button>
+                                            </form>
+                                        </td>
                                     </tr>
                                     <?php endforeach; ?>
                                 </tbody>

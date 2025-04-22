@@ -54,6 +54,8 @@ require __DIR__ . '/includes/header.php';
                     <p class="auth-link mt-3">
                         ليس لديك حساب؟
                         <a href="<?= BASE_URL ?>register.php">انشاء حساب</a>
+                        <br>
+                        <a href="<?= BASE_URL ?>forget_password.php">هل نسيت كلمة المرور؟</a>
                     </p>
                 </div>
             </div>

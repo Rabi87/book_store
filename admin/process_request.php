@@ -10,6 +10,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $action = $_POST['action'];
     
     try {
+            // ━━━━━━━━━━ الحصول على معرف المدير ━━━━━━━━━━
+        $stmt_admin = $conn->prepare("SELECT id FROM users WHERE user_type = 'admin' LIMIT 1");
+        $stmt_admin->execute();
+        $admin_id = $stmt_admin->get_result()->fetch_assoc()['id'];
+        
+        if (!$admin_id) {
+            throw new Exception("لم يتم العثور على حساب المدير!");
+        }
         // ━━━━━━━━━━ خصم المبلغ بعد الموافقة ━━━━━━━━━━
 
             // الحصول على user_id من جدول borrow_requests
@@ -29,6 +37,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $stmt_amount->bind_param("i", $request_id);
         $stmt_amount->execute();
         $amount = $stmt_amount->get_result()->fetch_assoc()['amount'];
+
+        // الحصول على المبلغ من الطلب بدلًا من القيمة الثابتة
+        $stmt_type = $conn->prepare("SELECT type FROM borrow_requests WHERE id = ?");
+        $stmt_type->bind_param("i", $request_id);
+        $stmt_type->execute();
+        $type = $stmt_type->get_result()->fetch_assoc()['type'];
         
         
         // التحقق من الرصيد الحالي
@@ -47,6 +61,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $stmt_deduct = $conn->prepare("UPDATE wallets SET balance = balance - ? WHERE user_id = ?");
         $stmt_deduct->bind_param("di", $amount, $user_id);
         $stmt_deduct->execute();
+
+        // ━━━━━━━━━━ إضافة المبلغ إلى رصيد المدير ━━━━━━━━━━
+        $stmt_add_admin = $conn->prepare("
+        INSERT INTO wallets (user_id, balance)
+        VALUES (?, ?)
+        ON DUPLICATE KEY UPDATE balance = balance + ?
+        ");
+        $stmt_add_admin->bind_param("idd", $admin_id, $amount, $amount);
+        $stmt_add_admin->execute();
+
         
         mysqli_report(MYSQLI_REPORT_ERROR | MYSQLI_REPORT_STRICT);
         $conn->begin_transaction();
@@ -69,15 +93,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $stmt->execute();
 
             // إضافة سجل دفع جديد مع التعديلات
-            
+            $transaction_id = 'TRX_' . bin2hex(random_bytes(8));
             $stmt_payment = $conn->prepare("
                 INSERT INTO payments (
+                    user_id,    
                     request_id, 
                     amount, 
-                    status
-                ) VALUES (?, ?, 'completed')
+                    status,
+                    payment_date,
+                    payment_type,
+                    transaction_id
+                ) VALUES (?,?, ?, 'completed', NOW(), ?,?)
             ");
-            $stmt_payment->bind_param("id", $request_id, $amount); // 'd' لـ decimal
+            $stmt_payment->bind_param("sidss",$user_id, $request_id, $amount,$type,$transaction_id); // 'd' لـ decimal
             $stmt_payment->execute();
 
             // الحصول على user_id من الطلب

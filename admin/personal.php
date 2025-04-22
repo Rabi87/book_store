@@ -95,30 +95,24 @@ if ($online_result) {
 </div>
 <div class="container mt-5">
     <div class="container mt-4">
+        <!-- داخل الجزء الخاص بعرض الإشعارات -->
         <?php if (empty($notifications)): ?>
-        <!-- عرض الرسالة إذا لم توجد إشعارات -->
-        <div class="notification-content">
-            <p class="notification-text">
-                <i class="fas fa-info-circle me-2"></i>
-                لا توجد إشعارات جديدة غير معالجة
-            </p>
+        <div class="alert alert-info">
+            <i class="fas fa-info-circle me-2"></i>
+            لا توجد إشعارات جديدة
         </div>
         <?php else: ?>
-        <!-- عرض الإشعارات إذا وجدت -->
         <?php foreach ($notifications as $notif): ?>
-        <?php if (!$notif['is_read']): ?>
-        <div class="notification-card" data-notif="<?= $notif['notification_id'] ?>">
-            <div class="notification-content">
-                <p class="notification-text">
-                    <?= htmlspecialchars($notif['message']) ?>
-                </p>
-                <a href="manage_loan.php" class="btn btn-success btn-sm" style="min-width: 120px;"
+        <div class="card mb-3 notification-card" data-notif="<?= $notif['notification_id'] ?>">
+            <div class="card-body">
+                <p><?= htmlspecialchars($notif['message']) ?></p>
+                <small class="text-muted"><?= $notif['created_at'] ?></small>
+                <a href="<?= $notif['link'] ?>" class="btn btn-sm btn-success float-end"
                     onclick="markAsRead(<?= $notif['notification_id'] ?>, event)">
-                    <i class="fas fa-arrow-left me-2"></i> إدارة الطلبات
+                    <i class="fas fa-external-link-alt me-2"></i> إدارة الطلب
                 </a>
             </div>
         </div>
-        <?php endif; ?>
         <?php endforeach; ?>
         <?php endif; ?>
     </div>

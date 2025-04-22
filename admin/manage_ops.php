@@ -1,6 +1,7 @@
 <?php
 // استدعاء ملف التهيئة الذي يحتوي على الاتصال وبدء الجلسة
 require_once __DIR__ . '/../includes/config.php';
+require_once __DIR__ . '/../includes/functions.php';
 
 // تحقق من صلاحيات المستخدم (يجب أن يكون أدمن)
 if (!isset($_SESSION['user_type']) || $_SESSION['user_type'] !== 'admin') {
@@ -18,6 +19,7 @@ try {
             p.amount,
             p.payment_date,
             p.status AS payment_status,
+            p.payment_type,
             p.transaction_id
         FROM payments p
         INNER JOIN borrow_requests br ON p.request_id = br.id
@@ -53,6 +55,7 @@ try {
                         <th>رقم الطلب</th>
                         <th>المبلغ</th>
                         <th>تاريخ الدفع</th>
+                        <th>العملية</th>
                         <th>الحالة</th>
                         <th>رقم المعاملة</th>
                     </tr>
@@ -68,6 +71,11 @@ try {
                                 <?= $payment['payment_date'] 
                                     ? date('Y-m-d H:i', strtotime($payment['payment_date']))
                                     : 'N/A' ?>
+                            </td>
+                            <td>
+                                <span class="badge bg-<?= getpTypeColor($payment['payment_type']) ?>">
+                                    <?= getpTypeText($payment['payment_type']) ?>
+                                </span>
                             </td>
                             <td>
                                 <?php 

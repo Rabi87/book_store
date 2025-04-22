@@ -8,6 +8,21 @@ function getStatusColor($status) {
         default: return 'warning';
     }
 }
+function getTypeColor($type) {
+    switch ($type) {
+        case 'purchase': return 'success';
+        case 'borrow': return 'danger';
+        default: return 'warning';
+    }
+}
+function getpTypeColor($payment_type) {
+    switch ($payment_type) {
+        case 'purchase': return 'success';
+        case 'borrow': return 'danger';
+        default: return 'warning';
+    }
+}
+
 
 function getStatusText($status) {
     $statuses = [
@@ -17,6 +32,23 @@ function getStatusText($status) {
     ];
     return $statuses[$status] ?? 'غير معروف';
 }
+function getTypeText($type) {
+    $statuses = [
+        'purchase' => 'شراء',
+        'borrow' => 'استعارة',
+        'topup' => 'شحن رصيد'
+    ];
+    return $statuses[$type] ?? 'غير معروف';
+}
+function getpTypeText($payment_type) {
+    $statuses = [
+        'purchase' => 'شراء',
+        'borrow' => 'استعارة',
+        'topup' => 'شحن رصيد'
+    ];
+    return $statuses[$payment_type] ?? 'غير معروف';
+}
+
 ?>
 <?php
 // ملف functions.php

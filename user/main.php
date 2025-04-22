@@ -81,10 +81,14 @@ try {
                 <div class="w-100">
                     <div class="d-flex justify-content-between align-items-center">
                         <span class="fw-medium"><?= htmlspecialchars($notif['message']) ?></span>
-                        <?php if ($notif['link']): ?>
+                        <?php if ($notif['link'] && $notif['link_read'] == 0): ?>
+                        <!-- عرض الرابط إذا كان link_read = 0 -->
                         <a href="<?= htmlspecialchars($notif['link']) ?>" class="btn btn-sm btn-outline-primary">
                             <i class="fas fa-external-link-alt me-2"></i>عرض
                         </a>
+                        <?php else: ?>
+                        <!-- إخفاء الرابط أو تعطيله -->
+                        <span class="text-muted">(تمت القراءة)</span>
                         <?php endif; ?>
                     </div>
                     <?php if (!empty($notif['created_at'])): ?>

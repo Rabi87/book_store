@@ -24,7 +24,7 @@ if (isset($_SESSION['user_id'])) {
     <link href="<?= BASE_URL ?>assets/css/style.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-    
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
 </head>
 
@@ -32,11 +32,11 @@ if (isset($_SESSION['user_id'])) {
     <header >
         <div class="container">
             <nav class="navbar navbar-expand-lg" style="
-                    background: linear-gradient(to right, #f8f9fa, #e9ecef);
+                    background: linear-gradient(to right, #f8f9fa,rgb(159, 166, 173));
                     box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
                 <div class="container-fluid">
                     <!-- الشعار على اليسار -->
-                    <a class="navbar-brand" href="<?= BASE_URL ?>home.php">
+                    <a class="navbar-brand" href="<?= BASE_URL ?>index.php">
                         <img src="<?= BASE_URL ?>assets/images/logo3.png" class="logo-hover" alt="شعار المكتبة"
                             style="height: 80px; width: 120px;">
                     </a>
@@ -110,9 +110,9 @@ if (isset($_SESSION['user_id'])) {
 
                 <div class="collapse navbar-collapse justify-content-center" id="navbarSupportedContent">
                     <ul class="navbar-nav">
-                        <li class="nav-item"> <a class="nav-link" href="<?= BASE_URL ?>home.php">المكتبة</a> </li>
+                        <li class="nav-item"> <a class="nav-link" href="<?= BASE_URL ?>index.php">المكتبة</a> </li>
                         <?php if (isset($_SESSION['user_id'])): ?>
-                        <li class="nav-item"> <a class="nav-link" href="<?= BASE_URL ?>index.php">اختبار</a> </li>
+                        <li class="nav-item"> <a class="nav-link" href="<?= BASE_URL ?>index2.php">اختبار</a> </li>
                         <li class="nav-item"> <a class="nav-link"
                                 href="<?= BASE_URL ?>Forum/manage_groups.php">المنتدى</a> </li>
                         <li class="nav-item"> <a class="nav-link"

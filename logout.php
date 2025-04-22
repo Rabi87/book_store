@@ -1,6 +1,7 @@
 <?php
 ob_start();
-session_start();
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();}
 
 // إلغاء جميع متغيرات الجلسة
 $_SESSION = array();

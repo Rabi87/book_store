@@ -1,10 +1,31 @@
 <?php
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();}
 require __DIR__ . '/includes/config.php';
 require __DIR__ . '/includes/header.php';
 
-// جلب التصنيفات من قاعدة البيانات
-$categories = $conn->query("SELECT * FROM categories");
+error_reporting(E_ALL);
+ini_set('display_errors', 1);
+ini_set('display_startup_errors', 1);
+
+// جلب التصنيفات باستخدام prepared statement
+$stmt = $conn->prepare("SELECT category_id, category_name FROM categories");
+$stmt->execute();
+$categories = $stmt->get_result();
 ?>
+
+<?php if (isset($_SESSION['error'])): ?>
+    <script>
+        Swal.fire({
+            icon: 'warning',
+            title: 'انتبه.. !',
+            text: '<?= $_SESSION['error'] ?>'
+            
+        });
+    </script>
+    <?php unset($_SESSION['error']); ?>
+<?php endif; ?>
+
 
 <div class="container mt-5">
     <div class="row justify-content-center">
@@ -16,20 +37,22 @@ $categories = $conn->query("SELECT * FROM categories");
                         <!-- الخطوة 1: البيانات الأساسية -->
                         <div id="step1">
                             <div class="mb-3">
-                                <label for="name" class="form-label">الاسم الكامل</label>
-                                <input type="text" class="form-control" name="name" required>
+                                <input type="text" class="form-control" 
+                                       name="name" placeholder="الاسم الكامل" required>
                             </div>
                             <div class="mb-3">
-                                <label for="email" class="form-label">البريد الإلكتروني</label>
-                                <input type="email" class="form-control" name="email" required>
+                                <input type="email" class="form-control" 
+                                       name="email" placeholder="البريد الإلكتروني" required>
                             </div>
                             <div class="mb-3">
-                                <label for="password" class="form-label">كلمة المرور</label>
-                                <input type="password" class="form-control" name="password" id="password" required>
+                                <input type="password" class="form-control" 
+                                       name="password" id="password" 
+                                       placeholder="كلمة المرور" required>
                             </div>
                             <div class="mb-3">
-                                <label for="confirm_password" class="form-label">تأكيد كلمة المرور</label>
-                                <input type="password" class="form-control" id="confirm_password" required>
+                                <input type="password" class="form-control" 
+                                       id="confirm_password" 
+                                       placeholder="تأكيد كلمة المرور" required>
                             </div>
                             <button type="button" class="btn btn-primary" onclick="nextStep()">التالي</button>
                         </div>
@@ -44,8 +67,11 @@ $categories = $conn->query("SELECT * FROM categories");
                                         <input 
                                             type="checkbox" 
                                             name="categories[]" 
-                                            value="<?= $cat['category_id'] ?>">
-                                        <label class="form-check-label">
+                                            value="<?= $cat['category_id'] ?>"
+                                            id="cat_<?= $cat['category_id'] ?>"
+                                            class="form-check-input"
+                                        >
+                                        <label class="form-check-label" for="cat_<?= $cat['category_id'] ?>">
                                             <?= htmlspecialchars($cat['category_name']) ?>
                                         </label>
                                     </div>
@@ -66,6 +92,7 @@ $categories = $conn->query("SELECT * FROM categories");
         </div>
     </div>
 </div>
+
 
 <script>
 function nextStep() {

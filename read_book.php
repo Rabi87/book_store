@@ -108,6 +108,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['complete_reading'])) 
         $stmt_check->execute();
 
         if ($stmt_check->affected_rows > 0) {
+            // تحديث الإشعار المرتبط بالطلب
+            $stmt_notification = $conn->prepare("
+                UPDATE notifications 
+                SET link_read = 1 
+                WHERE 
+                    user_id = ? 
+                    AND link LIKE ? 
+                    AND link_read = 0
+            ");
+            $link_pattern = "%request_id=$request_id%";
+            $stmt_notification->bind_param("is", $user_id, $link_pattern);
+            $stmt_notification->execute();
             $_SESSION['success'] = "تم تسجيل إتمام القراءة بنجاح!";
         } else {
             $_SESSION['error'] = "لم يتم العثور على الطلب أو تم تسجيله مسبقاً!";

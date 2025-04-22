@@ -18,7 +18,7 @@
 
 body {
     font-family: 'Cairo', sans-serif;
-    background-color: #f8f9fa;
+    background-color: linear-gradient(to right, #f8f9fa,rgb(159, 166, 173));
     direction: rtl;
     text-align: right;
 }
@@ -111,7 +111,7 @@ body {
 }
 
 .control-panel h3 {
-    color: #fff;
+    color: linear-gradient(to right, #f8f9fa,rgb(159, 166, 173));
     text-align: center;
     margin-bottom: 25px;
 }
@@ -208,11 +208,12 @@ body {
     height: 200px;
     border: 1px solid #f1f1f1;
     perspective: 1000px;
+    min-height: 200px;
     /* Remove this if you don't want the 3D effect */
 }
 
 /* This container is needed to position the front and back side */
-.flip-card-inner {
+.flip-inner {
     position: relative;
     width: 100%;
     height: 100%;

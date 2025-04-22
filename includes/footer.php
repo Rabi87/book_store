@@ -30,7 +30,7 @@
        
     </nav> <!-- حقوق النشر -->
     <div class="navbar navbar-expand-lg"
-        style=" background: linear-gradient(to right, #f8f9fa, #e9ecef); box-shadow: 0 2px 10px rgba(0,0,0,0.1); ">
+        style=" background:linear-gradient(to right, #f8f9fa,rgb(159, 166, 173));; box-shadow: 0 2px 10px rgba(0,0,0,0.1); ">
         <div class="container">
             <p class="text-center text-muted mb-0 py-3"> &copy; <?= date('Y') ?> جميع الحقوق محفوظة | تصميم بواسطة <a
                     href="#" class="text-decoration-none text-primary">battoul</a> </p>
@@ -43,6 +43,7 @@
     <script src="<?= BASE_URL ?>assets/bootstrap/js/popper.min.js"></script>
     <script src="<?= BASE_URL ?>assets/bootstrap/js/jquery-3.7.1.min.js"></script>
     <script src="<?= BASE_URL ?>assets/bootstrap/js/bootstrap.js"></script>
+   
    
 </footer> <!-- المكتبات البرمجية -->
 

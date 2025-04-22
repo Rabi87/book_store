@@ -3,6 +3,7 @@ session_start();
 error_reporting(E_ALL);
 ini_set('display_errors', 1);
 ini_set('display_startup_errors', 1);
+
 require __DIR__ . '/includes/config.php';
 require __DIR__ . '/includes/functions.php';
 
@@ -68,8 +69,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     transaction_id
                 ) VALUES (?, ?, 'completed', NOW(), ?)
             ");
+            $_SESSION['sucsess'] = "تم الدفع " ;
+
+           
             if (!$stmt_payment) {
-                throw new Exception("خطأ في إعداد استعلام الدفع: " . $conn->error);
+                $_SESSION['error'] = "خطأ في إعداد استعلام الدفع " ;
+                header("Location:user/dashboard.php"); // أو الصفحة الحالية
+                exit();
             }
             $stmt_payment->bind_param("ids", $_SESSION['user_id'], $amount, $transaction_id);
             $stmt_payment->execute();

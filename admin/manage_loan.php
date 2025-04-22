@@ -20,7 +20,8 @@ $stmt = $conn->prepare("
         u.name AS user_name,
         b.title AS book_title,
         br.request_date,
-        br.status 
+        br.status,
+        br.type
     FROM 
         borrow_requests br
     JOIN 
@@ -46,6 +47,7 @@ require __DIR__ . '/../includes/functions.php';
                 <th>المستخدم</th>
                 <th>الكتاب</th>
                 <th>تاريخ الطلب</th>
+                <th>العملية</th>
                 <th>الحالة</th>
                 <th>الإجراءات</th>
             </tr>
@@ -58,10 +60,16 @@ require __DIR__ . '/../includes/functions.php';
                 <td><?= htmlspecialchars($request['book_title']) ?></td>
                 <td><?= date('Y/m/d H:i', strtotime($request['request_date'])) ?></td>
                 <td>
+                    <span class="badge bg-<?= getTypeColor($request['type']) ?>">
+                        <?= getTypeText($request['type']) ?>
+                    </span>
+                </td>
+                <td>
                     <span class="badge bg-<?= getStatusColor($request['status']) ?>">
                         <?= getStatusText($request['status']) ?>
                     </span>
                 </td>
+               
                 <td>
                     <form method="POST" action="<?= BASE_URL ?>admin/process_request.php" class="d-flex gap-2">
                         <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?>">
