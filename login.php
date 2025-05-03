@@ -5,64 +5,140 @@ if (session_status() === PHP_SESSION_NONE) {
 require __DIR__ . '/includes/config.php'; 
 require __DIR__ . '/includes/header.php'; 
 ?>
+<!-- نجاح عملية التسجيل-->
+<?php if (isset($_SESSION['success'])): ?>
+<script>
+Swal.fire({
+    icon: 'success',
+    title: 'مبروك.. !',
+    text: '<?= $_SESSION['success'] ?>'
+});
+</script>
+<?php unset($_SESSION['success']); ?>
+<?php endif; ?>
+<!-- فشل عملية التسجيل-->
+<?php if (isset($_SESSION['error'])): ?>
+<script>
+Swal.fire({
+    icon: 'warning',
+    title: 'انتبه.. !',
+    text: '<?= $_SESSION['error'] ?>'
+});
+</script>
+<?php unset($_SESSION['error']); ?>
+<?php endif; ?>
+
+<?php if (isset($_SESSION['erroruser'])): ?>
+<script>
+Swal.fire({
+    icon: 'warning',
+    title: 'انتبه.. !',
+    text: '<?= $_SESSION['erroruser'] ?>'
+});
+</script>
+<?php unset($_SESSION['erroruser']); ?>
+<?php endif; ?>
+
+<?php if (isset($_SESSION['errorpass'])): ?>
+<script>
+Swal.fire({
+    icon: 'warning',
+    title: 'انتبه.. !',
+    text: '<?= $_SESSION['errorpass'] ?>'
+});
+</script>
+<?php unset($_SESSION['errorpass']); ?>
+<?php endif; ?>
 
 <div class="container mt-5">
     <div class="row justify-content-center">
         <div class="col-md-6">
-            <?php include __DIR__ . '/includes/alerts.php'; ?>
-            <!-- رسائل تحذيرية -->
-            <div class="card">
-                <div class="card-header">تسجيل الدخول</div>
-                <div class="card-body">
+            <div class="card border-0 shadow-sm" style="border-radius: 15px;">
+                <div class="card-header bg-gradient-primary text-white py-3">
+                    <h4 class="mb-0 fw-bold">
+                        <i class="fas fa-sign-in-alt me-2"></i> تسجيل الدخول
+                    </h4>
+                </div>
+                <div class="card-body p-4">
                     <form action="<?= BASE_URL ?>process.php" method="POST">
-                        <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_SESSION['csrf_token']) ?>">
-
-                        <div class="mb-3">
-                            <input type="text" class="form-control" placeholder="اسم المستخدم" name="name" required>
+                        <!-- حقل اسم المستخدم مع أيقونة -->
+                        <div class="mb-4 input-group">
+                            <span class="input-group-text bg-light border-end-0">
+                                <i class="fas fa-user text-primary"></i>
+                            </span>
+                            <input type="text" class="form-control" 
+                                placeholder="اسم المستخدم" 
+                                name="name" 
+                                style="border-left: 0;">
                         </div>
 
-                        <div class="mb-3">
-                            <div class="input-group">
-                                <input type="password" class="form-control pe-5" id="password" placeholder="كلمة المرور"
-                                    name="password" style="padding-right: 45px;" required>
-                                <button type="button"
-                                    class="btn btn-link position-absolute top-50 end-0 translate-middle-y"
-                                    onclick="togglePassword()"
-                                    style="position: absolute; right: 0; z-index: 10; background: none; border: none;">
-                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor"
-                                        class="bi bi-eye" viewBox="0 0 16 16" id="eyeIcon">
-                                        <path
-                                            d="M16 8s-3-5.5-8-5.5S0 8 0 8s3 5.5 8 5.5S16 8 16 8zM1.173 8a13.133 13.133 0 0 1 1.66-2.043C4.12 4.668 5.88 3.5 8 3.5c2.12 0 3.879 1.168 5.168 2.457A13.133 13.133 0 0 1 14.828 8c-.058.087-.122.183-.195.288-.335.48-.83 1.12-1.465 1.755C11.879 11.332 10.119 12.5 8 12.5c-2.12 0-3.879-1.168-5.168-2.457A13.134 13.134 0 0 1 1.172 8z" />
-                                        <path
-                                            d="M8 5.5a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5zM4.5 8a3.5 3.5 0 1 1 7 0 3.5 3.5 0 0 1-7 0z" />
-                                    </svg>
-                                </button>
-                            </div>
+                        <!-- حقل كلمة المرور مع أيقونة -->
+                        <div class="mb-4 input-group">
+                            <span class="input-group-text bg-light border-end-0">
+                                <i class="fas fa-lock text-primary"></i>
+                            </span>
+                            <input type="password" 
+                                class="form-control" 
+                                id="password"
+                                placeholder="كلمة المرور"
+                                name="password" 
+                                style="border-left: 0;">
+                            <!-- زر إظهار/إخفاء -->
+                            <button type="button" class="btn btn-link text-muted" 
+                                onclick="togglePassword()">
+                                <i class="fas fa-eye"></i>
+                            </button>
                         </div>
 
-                        <div class="mb-3 form-check">
-                            <div class="d-flex flex-row-reverse justify-content-start align-items-center gap-2">
-                                <label class="form-check-label m-0" for="remember">تذكر الحساب</label>
-                                <input type="checkbox" class="form-check-input position-static" id="remember"
-                                    name="remember_me">
-                            </div>
+                        <!-- خيار تذكرني -->
+                        <div class="mb-4 form-check">
+                            <input type="checkbox" class="form-check-input" id="remember" name="remember_me">
+                            <label class="form-check-label" for="remember">تذكر الحساب</label>
                         </div>
 
-                        <button type="submit" name="login" class="btn btn-primary">دخول</button>
+                        <!-- زر الدخول -->
+                        <button type="submit" name="login" 
+                            class="btn btn-primary w-100 py-2 fw-bold">
+                            <i class="fas fa-sign-in-alt me-2"></i> دخول
+                        </button>
                     </form>
 
-                    <p class="auth-link mt-3">
-                        ليس لديك حساب؟
-                        <a href="<?= BASE_URL ?>register.php">انشاء حساب</a>
+                    <!-- الروابط -->
+                    <div class="mt-4 text-center">
+                        <a href="<?= BASE_URL ?>register.php" class="text-decoration-none">
+                            <i class="fas fa-user-plus me-1"></i> إنشاء حساب
+                        </a>
                         <br>
-                        <a href="<?= BASE_URL ?>forget_password.php">هل نسيت كلمة المرور؟</a>
-                    </p>
+                        <a href="<?= BASE_URL ?>forget_password.php" class="text-decoration-none mt-2 d-block">
+                            <i class="fas fa-key me-1"></i> نسيت كلمة المرور؟
+                        </a>
+                    </div>
                 </div>
             </div>
         </div>
     </div>
 </div>
 
+<style>
+.card {
+    border-radius: 15px;
+    overflow: hidden;
+    border: none !important;
+}
+
+.bg-gradient-primary {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
+
+.input-group-text {
+    transition: all 0.3s;
+}
+
+.form-control:focus {
+    box-shadow: none;
+    border-color: #667eea;
+}
+</style>
 <script>
 function togglePassword() {
     const passwordField = document.getElementById('password');
@@ -77,5 +153,4 @@ function togglePassword() {
     }
 }
 </script>
-
 <?php require __DIR__ . '/includes/footer.php'; ?>

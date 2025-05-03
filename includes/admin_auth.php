@@ -6,7 +6,7 @@ ini_set('display_startup_errors', 1);
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
-require __DIR__ . '/includes/config.php';
+require __DIR__ . '/config.php';
 
 // التحقق من تسجيل الدخول
 if (!isset($_SESSION['user_id'])) {

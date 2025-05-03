@@ -1,16 +1,18 @@
 <?php
-// بدء الجلسة مرة واحدة فقط
+ob_start(); // بدء تخزين المخرجات
 if (session_status() === PHP_SESSION_NONE) {
-    session_start();}
-
+    session_start();
+}
 require __DIR__ . '/../includes/config.php';
-// بعد بدء الجلسة مباشرة
+
+// تحديث آخر نشاط للمستخدم (بدون مسافات قبل <?php)
 if (isset($_SESSION['user_id'])) {
     $stmt = $conn->prepare("UPDATE users SET last_activity = NOW() WHERE id = ?");
     $stmt->bind_param("i", $_SESSION['user_id']);
     $stmt->execute();
+    $stmt->close();
 }
-
+ob_end_clean(); // مسح المخرجات المخزنة قبل إرسال الـ headers
 ?>
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
@@ -19,89 +21,113 @@ if (isset($_SESSION['user_id'])) {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, shrink-to-fit=no">
     <title>المكتبة الذكية</title>
-    <!-- الخطوط العربية -->
-    <link href="<?= BASE_URL ?>assets/bootstrap/css/bootstrap.css" rel="stylesheet">
-    <link href="<?= BASE_URL ?>assets/css/style.css" rel="stylesheet">
-    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
+    <!-- 1. تحميل الخط أولاً -->
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;600;700&display=swap" rel="stylesheet">
+
+    <!-- 2. المكتبات الأساسية -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+
+    <!-- 3. الملفات المحلية -->
+    <link rel="stylesheet" href="<?= BASE_URL ?>assets/css/style.css?v=<?= time() ?>">
+
+    <!-- 4. السكربتات -->
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 </head>
+<style>
+.hover-effect {
+    transition: all 0.3s ease;
+    padding: 8px;
+    border-radius: 50%;
+}
+
+.hover-effect:hover {
+    background: rgba(255, 255, 255, 0.1);
+    transform: scale(1.1);
+}
+
+.hover-effect:hover i {
+    color: #e2e8f0 !important;
+}
+</style>
 
 <body class="d-flex flex-column min-vh-100">
-    <header >
+    <header>
         <div class="container">
-            <nav class="navbar navbar-expand-lg" style="
-                    background: linear-gradient(to right, #f8f9fa,rgb(159, 166, 173));
-                    box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
-                <div class="container-fluid">
-                    <!-- الشعار على اليسار -->
-                    <a class="navbar-brand" href="<?= BASE_URL ?>index.php">
-                        <img src="<?= BASE_URL ?>assets/images/logo3.png" class="logo-hover" alt="شعار المكتبة"
-                            style="height: 80px; width: 120px;">
-                    </a>
-                    <!-- زر القائمة المنسدلة للجوال و الخاصة بالمستخدم-->
-                    <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav"
-                        aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
-                        <i class="fas fa-user-circle fa-lg"></i>
-                    </button>
-                    <!-- العناصر على اليمين -->
-                    <div class="collapse navbar-collapse justify-content-end" id="navbarNav">
-                        <div class="d-flex align-items-center gap-3">
+            <!-- الجزء العلوي -->
+            <nav class="navbar navbar-expand-lg py-3" style="background: transparent !important;">
+                <div class="row g-3 w-100 mx-0 align-items-stretch">
+                    <!-- البطاقة 1: الشعار -->
+                    <div class="col-md-4">
+                        <div class="card border-0 shadow-sm h-100"
+                            style="background: linear-gradient(135deg, #4a5568 0%, #2d3748 100%);border-radius: 15px;">
+                            <div class="card-body d-flex align-items-center justify-content-center py-3 px-4">
+                                <a href="<?= BASE_URL ?>index.php">
+                                    <img src="<?= BASE_URL ?>assets/images/logo3.png" class="img-fluid"
+                                        style="height: 60px; filter: brightness(0) invert(1);" alt="شعار المكتبة">
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- البطاقة 2: فارغة -->
+                    <div class="col-md-4">
+                        <div 
+                            >
+                            <!-- محتوى فارغ مع ارتفاع ثابت -->
+                        </div>
+                    </div>
+
+                    <!-- البطاقة 3: معلومات المستخدم -->
+                    <div class="col-md-4">
+                        <div class="card border-0 shadow-sm h-100"
+                            style="background: linear-gradient(135deg, #4a5568 0%, #2d3748 100%);border-radius: 15px;">
                             <?php if(isset($_SESSION['user_id'])): ?>
-                            <!-- معلومات المستخدم مع Dropdown -->
-                            <div class="user-dropdown position-relative">
-                                <!-- العنصر الرئيسي الذي يتم النقر عليه -->
-                                <div class="d-flex align-items-center gap-2 cursor-pointer" onclick="toggleDropdown()">
-                                    <i class="fas fa-user-circle fa-2x" style="color: #2c3e50;"></i>
-                                    <div class="d-flex flex-column">
-                                        <span style="font-weight: 600; color: #2c3e50;">
-                                            <?= htmlspecialchars($_SESSION['user_name']) ?>
-                                        </span>
-                                        <span style="font-size: 0.9em; color: #7f8c8d;">
-                                            <i class="fas fa-shield-alt"></i>
-                                            <?= ($_SESSION['user_type'] == 'admin') ? 'مدير النظام' : 'مستخدم' ?>
-                                        </span>
+                            <div class="card-body py-3 px-4 h-100">
+                                <div class="d-flex align-items-center justify-content-between h-100">
+                                    <!-- محتوى المستخدم -->
+                                    <div class="d-flex align-items-center gap-3">
+                                        <i class="fas fa-user-shield text-white fs-2"></i>
+                                        <div class="d-flex flex-column">
+                                            <h4 class="text-white mb-0 fw-semibold">
+                                                <?= htmlspecialchars($_SESSION['user_name']) ?>
+                                            </h4>
+                                            <span class="badge bg-light text-dark mt-1" style="font-size: 0.75rem;">
+                                                <?= ($_SESSION['user_type'] == 'admin') ? 'مدير النظام' : 'مستخدم' ?>
+                                            </span>
+                                        </div>
                                     </div>
 
-                                </div>
-
-                                <!-- قائمة الخروج المخفية -->
-                                <div id="logoutDropdown" class="dropdown-menu-custom1">
-                                    <a href="<?= BASE_URL ?>logout.php"
-                                        class="logout-link1 d-flex align-items-center gap-2 text-decoration-none">
-                                        <i class="fas fa-sign-out-alt"></i>
-
-                                    </a>
+                                    <!-- زر الخروج -->
+                                    <div class="d-flex align-items-center gap-2">
+                                        <div class="vertical-divider"
+                                            style="border-right: 2px solid rgba(255,255,255,0.3); height: 40px;"></div>
+                                        <a href="<?= BASE_URL ?>logout.php" class="text-decoration-none">
+                                            <i class="fas fa-sign-out-alt text-white fs-5"></i>
+                                        </a>
+                                    </div>
                                 </div>
                             </div>
                             <?php else: ?>
-                            <!-- زر الدخول -->
-                            <div class="dropdown-menu-custom2">
-                                <a href="<?= BASE_URL ?>login.php" class="login-icon text-decoration-none">
-                                    <i class="fas fa-sign-in-alt"></i>
-                                </a>
+                            <div class="card-body py-3 px-4 h-100">
+                                <div class="d-flex align-items-center justify-content-center h-100">
+                                    <a href="<?= BASE_URL ?>login.php"
+                                        class="text-white text-decoration-none d-flex align-items-center gap-2">
+                                        <i class="fas fa-sign-in-alt fs-5"></i>
+                                        <span>تسجيل الدخول</span>
+                                    </a>
+                                </div>
                             </div>
                             <?php endif; ?>
                         </div>
-                        <script>
-                        function toggleDropdown() {
-                            const dropdown = document.getElementById('logoutDropdown');
-                            dropdown.style.display = dropdown.style.display === 'flex' ? 'none' :
-                            'flex'; // تغيير إلى flex
-                        }
-                        window.onclick = function(event) {
-                            if (!event.target.closest('.user-dropdown')) {
-                                document.getElementById('logoutDropdown').style.display = 'none';
-                            }
-                        }
-                        </script>
                     </div>
                 </div>
             </nav>
 
-            <nav class="navbar navbar-expand-lg navbar-dark sticky-top">
-
+            <!-- القائمة الرئيسية  -->
+            <nav class="navbar navbar-expand-lg navbar-dark sticky-top"
+                style="background: linear-gradient(135deg, #4a5568 0%, #2d3748 100%); color: white;">
                 <button class="navbar-toggler" type="button" data-toggle="collapse"
                     data-target="#navbarSupportedContent" aria-controls="navbarSupportedContent" aria-expanded="false"
                     aria-label="Toggle navigation">
@@ -111,10 +137,12 @@ if (isset($_SESSION['user_id'])) {
                 <div class="collapse navbar-collapse justify-content-center" id="navbarSupportedContent">
                     <ul class="navbar-nav">
                         <li class="nav-item"> <a class="nav-link" href="<?= BASE_URL ?>index.php">المكتبة</a> </li>
+                        <li class="nav-item"> <a class="nav-link" href="<?= BASE_URL ?>complaint.php">شكاوي</a> </li>
                         <?php if (isset($_SESSION['user_id'])): ?>
-                        <li class="nav-item"> <a class="nav-link" href="<?= BASE_URL ?>index2.php">اختبار</a> </li>
+                        <li class="nav-item"> <a class="nav-link" href="<?= BASE_URL ?>home.php">اختبار</a> </li>
                         <li class="nav-item"> <a class="nav-link"
-                                href="<?= BASE_URL ?>Forum/manage_groups.php">المنتدى</a> </li>
+                                href="<?= BASE_URL ?>Forum/manage_groups.php">المنتدى</a>
+                        </li>
                         <li class="nav-item"> <a class="nav-link"
                                 href="<?= BASE_URL . ($_SESSION['user_type'] == 'admin' ? 'admin/dashboard.php' : 'user/dashboard.php') ?>">
                                 لوحة التحكم
@@ -122,27 +150,22 @@ if (isset($_SESSION['user_id'])) {
                         <?php endif; ?>
                     </ul>
                 </div>
-
             </nav>
-
-
-            <!-- مودال تسجيل الدخول -->
-        <div class="modal fade" id="loginModal">
-            <div class="modal-dialog">
-                <div class="modal-content">
-                    <div class="modal-header">
-                        <h5 class="modal-title">تسجيل الدخول مطلوب</h5>
-                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                    </div>
-                    <div class="modal-body">
-                        <p>يجب تسجيل الدخول لإكمال هذه العملية</p>
-                        <a href="login.php" class="btn btn-primary">تسجيل الدخول</a>
-                        <a href="register.php" class="btn btn-secondary">إنشاء حساب</a>
-                    </div>
-                </div>
-            </div>
-        </div>
         </div>
     </header>
+
+
+
+    <script>
+    function toggleDropdown() {
+        const dropdown = document.getElementById('logoutDropdown');
+        dropdown.style.display = dropdown.style.display === 'flex' ? 'none' : 'flex';
+    }
+    window.onclick = function(event) {
+        if (!event.target.closest('.user-dropdown')) {
+            document.getElementById('logoutDropdown').style.display = 'none';
+        }
+    }
+    </script>
 
     <main class="flex-grow-1 container my-2">

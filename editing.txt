@@ -2466,3 +2466,465 @@ if ($conn->connect_error) {
     die("Connection failed: " . $conn->connect_error);
 }
 ?>
+-**-***-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*
+
+<?php
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
+error_reporting(E_ALL);
+ini_set('display_errors', 1);
+ini_set('display_startup_errors', 1);
+require __DIR__ . '/../includes/config.php';
+ // ملف إدارة CSRF
+
+// ------ التحقق من تسجيل الدخول ------
+if (!isset($_SESSION['user_id'])) {
+    header('Location: ' . BASE_URL . 'login.php');
+    exit();
+}
+
+// توليد توكن CSRF
+
+// ------ معالجة طلبات AJAX ------
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['ajax_action'])) {
+    header('Content-Type: application/json');
+    
+    // التحقق من CSRF
+    if (!verifyCSRFToken($_POST['csrf_token'])) {
+        echo json_encode(['error' => 'رمز الحماية غير صالح']);
+        exit();
+    }
+
+    $response = [];
+    $userId = $_SESSION['user_id'];
+    
+    // معالجة طلب الانضمام
+    if ($_POST['ajax_action'] === 'join_group') {
+        $groupId = (int)$_POST['group_id'];
+        
+        $stmt = $conn->prepare("INSERT INTO join_requests (group_id, user_id) VALUES (?, ?)");
+        $stmt->bind_param("ii", $groupId, $userId);
+        if ($stmt->execute()) {
+            $response['success'] = 'تم إرسال طلب الانضمام!';
+        } else {
+            $response['error'] = 'فشل إرسال الطلب!';
+        }
+    }
+    
+    // معالجة طلب المغادرة
+    if ($_POST['ajax_action'] === 'leave_group') {
+        $groupId = (int)$_POST['group_id'];
+        
+        // التحقق من أن المستخدم ليس المالك
+        $stmt = $conn->prepare("SELECT owner_id FROM users_groups WHERE group_id = ?");
+        $stmt->bind_param("i", $groupId);
+        $stmt->execute();
+        $ownerId = $stmt->get_result()->fetch_assoc()['owner_id'];
+        
+        if ($ownerId != $userId) {
+            $stmt = $conn->prepare("DELETE FROM group_members WHERE group_id = ? AND user_id = ?");
+            $stmt->bind_param("ii", $groupId, $userId);
+            if ($stmt->execute()) {
+                $response['success'] = 'تم مغادرة المجموعة!';
+            }
+        } else {
+            $response['error'] = 'لا يمكنك مغادرة مجموعتك!';
+        }
+    }
+    
+    echo json_encode($response);
+    exit();
+}
+
+// ------ جلب البيانات مع JOINs لتحسين الأداء ------
+$query = "
+    SELECT 
+        g.group_id,
+        g.group_name,
+        g.unique_code,
+        g.owner_id,
+        COUNT(DISTINCT gm.user_id) AS member_count,
+        COUNT(DISTINCT gb.book_link) AS book_count,
+        MAX(gb.added_at) AS last_activity
+    FROM users_groups g
+    LEFT JOIN group_members gm ON g.group_id = gm.group_id
+    LEFT JOIN group_books gb ON g.group_id = gb.group_id
+    GROUP BY g.group_id
+";
+
+$groups = $conn->query($query)->fetch_all(MYSQLI_ASSOC);
+
+// ------ جلب مجموعات المستخدم وطلباته ------
+$userGroups = $conn->query("
+    SELECT group_id FROM group_members 
+    WHERE user_id = {$_SESSION['user_id']}
+")->fetch_all(MYSQLI_ASSOC);
+
+$userGroupIds = array_column($userGroups, 'group_id');
+
+$pendingRequests = $conn->query("
+    SELECT group_id FROM join_requests 
+    WHERE user_id = {$_SESSION['user_id']} AND status = 'pending'
+")->fetch_all(MYSQLI_ASSOC);
+$pendingGroupIds = array_column($pendingRequests, 'group_id');
+
+require __DIR__ . '/../includes/header.php';
+?>
+
+<div class="container py-4">
+    <!-- شريط البحث وإنشاء المجموعة -->
+    <div class="row mb-4 g-3">
+        <div class="col-md-6">
+            <div class="input-group shadow-sm">
+                <span class="input-group-text bg-dark text-white">
+                    <i class="fas fa-search"></i>
+                </span>
+                <input type="text" id="groupSearch" class="form-control" placeholder="ابحث عن مجموعة...">
+            </div>
+        </div>
+        <div class="col-md-6">
+            <button class="btn w-100 shadow-sm" data-bs-toggle="modal" data-bs-target="#createGroupModal" id="bttn">
+                <i class="fas fa-plus-circle me-2"></i> مجموعة جديدة
+            </button>
+        </div>
+    </div>
+
+    <!-- بطاقات المجموعات -->
+    <div class="row row-cols-1 row-cols-sm-2 row-cols-md-3 row-cols-lg-4 g-4" id="groupsContainer">
+        <?php foreach ($groups as $group): 
+        $isMember = in_array($group['group_id'], $userGroupIds);
+        $isOwner = ($group['owner_id'] == $_SESSION['user_id']);
+    ?>
+        <div class="col">
+            <div class="card h-100 border-0 shadow-sm hover-effect">
+
+                <div class="card-header bg-gradient-primary text-warning py-3">
+                    <h5 class="card-title mb-0 fw-bold">
+                        <i class="fas fa-users me-2"></i>
+                        <?= htmlspecialchars($group['group_name']) ?>
+                    </h5>
+                </div>
+
+                <div class="card-body">
+                    <div class="d-flex justify-content-between mb-3">
+                        <div class="text-start">
+                            <small class="text-muted">
+                                <i class="fas fa-users me-1"></i>
+                                <?= $group['member_count'] ?> أعضاء
+                            </small>
+                        </div>
+                        <div class="text-end">
+                            <small class="text-muted">
+                                <i class="fas fa-book me-1"></i>
+                                <?= $group['book_count'] ?> كتب
+                            </small>
+                        </div>
+                    </div>
+
+                    <div class="progress mb-3" style="height: 8px;">
+                        <div class="progress-bar bg-info"
+                            style="width: <?= min(100, ($group['book_count'] / 50) * 100) ?>%">
+                        </div>
+                    </div>
+
+                    <?php if ($isOwner): ?>
+                    <div class="alert alert-warning py-2 mb-3 small">
+                        <i class="fas fa-crown me-2"></i>
+                        أنت مالك هذه المجموعة
+                    </div>
+                    <?php endif; ?>
+                </div>
+
+                <div class="card-footer bg-light">
+                    <div class="d-grid gap-2">
+                        <?php if ($isMember): ?>
+                        <a href="group_books.php?code=<?= $group['unique_code'] ?>"
+                            class="btn btn-outline-primary btn-sm rounded-pill">
+                            <i class="fas fa-book-open me-1"></i> عرض الكتب
+                        </a>
+                        <?php else: ?>
+                        <button class="btn btn-success btn-sm rounded-pill join-group-btn"
+                            data-group-id="<?= $group['group_id'] ?>">
+                            <i class="fas fa-sign-in-alt me-1"></i> انضم الآن
+                        </button>
+                        <?php endif; ?>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <?php endforeach; ?>
+    </div>
+</div>
+
+<!-- مودال إنشاء المجموعة -->
+<div class="modal fade" id="createGroupModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow">
+            <div class="modal-header bg-dark text-white">
+                <h5 class="modal-title">
+                    <i class="fas fa-plus-circle me-2"></i> إنشاء مجموعة
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="POST">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label text-dark">اسم المجموعة</label>
+                        <input type="text" name="group_name" class="form-control rounded-pill" required>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary rounded-pill" data-bs-dismiss="modal">إلغاء</button>
+                    <button type="submit" class="btn btn-primary rounded-pill">
+                        <i class="fas fa-check me-1"></i> تأكيد
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- الأنماط المخصصة -->
+<style>
+.hover-effect {
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+    border-radius: 15px;
+    overflow: hidden;
+}
+
+.hover-effect:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 10px 20px rgba(0, 0, 0, 0.15);
+}
+
+.bg-gradient-primary {
+    background: linear-gradient(135deg,rgb(36, 36, 44) 0%,rgb(0, 0, 0) 100%);
+    
+}
+
+.card-header {
+    border-bottom: none;
+}
+
+.rounded-pill {
+    border-radius: 50px !important;
+}
+
+.progress {
+    border-radius: 10px;
+    background-color:rgb(255, 255, 255);
+}
+
+.progress-bar {
+    border-radius: 10px;
+}
+.hover-effect {
+    transition: transform 0.3s ease;
+}
+
+.hover-effect:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 10px 20px rgba(0,0,0,0.12);
+}
+.card{
+    background: linear-gradient(to right, #f8f9fa,rgb(208, 212, 216));
+    font-family: 'Cairo', sans-serif;
+}
+#bttn{
+    background: linear-gradient(to right, #f8f9fa,rgb(208, 212, 216));
+}
+</style>
+
+<script>
+// كود JavaScript السابق مع تحسينات
+$(document).ready(function() {
+    // البحث الفوري
+    $('#groupSearch').on('input', function() {
+        const searchTerm = $(this).val().toLowerCase();
+        $('.group-card').each(function() {
+            const groupName = $(this).find('.card-title').text().toLowerCase();
+            $(this).toggle(groupName.includes(searchTerm));
+        });
+    });
+
+    // تأثيرات التحويم
+    $('.card').hover(
+        function() {
+            $(this).addClass('hover-active');
+        },
+        function() {<div class="card border-0 shadow-lg" style="
+    background: linear-gradient(135deg, #4a5568 0%, #2d3748 100%);
+    border-radius: 15px;
+    max-width: 500px;
+    margin: 2rem auto;
+">
+    <div class="card-body py-4 px-5">
+        <div class="d-flex align-items-center justify-content-between">
+            <!-- مجموعة معلومات المستخدم -->
+            <div class="d-flex align-items-center gap-3">
+                <!-- الأيقونة والتفاصيل -->
+                <div class="d-flex align-items-center gap-3">
+                    <i class="fas fa-user-shield text-white fs-2"></i>
+                    <div class="user-details">
+                        <h4 class="text-white mb-0 fw-semibold"><?= htmlspecialchars($_SESSION['user_name']) ?></h4>
+                        <span class="badge bg-light text-dark mt-1" style="font-size: 0.75rem;">
+                            <?= ($_SESSION['user_type'] == 'admin') ? 'مدير النظام' : 'مستخدم' ?>
+                        </span>
+                    </div>
+                </div>
+                
+                <!-- الخط الفاصل -->
+                <div class="vertical-divider" style="
+                    border-right: 2px solid rgba(255,255,255,0.3);
+                    height: 40px;
+                    margin: 0 1rem;
+                "></div>
+            </div>
+
+            <!-- زر الخروج -->
+            <a href="<?= BASE_URL ?>logout.php" class="text-decoration-none hover-effect">
+                <i class="fas fa-sign-out-alt text-white fs-5"></i>
+            </a>
+        </div>
+    </div>
+</div>
+
+<style>
+.hover-effect {
+    transition: all 0.3s ease;
+    padding: 10px;
+    display: flex;
+    align-items: center;
+}
+
+.hover-effect:hover {
+    background: rgba(255,255,255,0.1);
+    border-radius: 8px;
+}
+
+.hover-effect:hover i {
+    transform: translateX(3px);
+    color: #e2e8f0 !important;
+}
+
+.user-details {
+    position: relative;
+    padding-left: 1rem;
+}
+
+.card {
+    transition: transform 0.3s ease;
+}
+
+.card:hover {
+    transform: translateY(-5px);
+}
+</style>
+    );
+});
+</script>
+
+<?php require __DIR__ . '/../includes/footer.php'; ?>
+
+-*--*-*-*/-*/*-/*-/-/-*/*-/-*/-*/-*/-/-*/-*/*/-*/-*/
+
+
+
+
+<div class="card border-0 shadow-lg" style="
+    background: linear-gradient(135deg, #4a5568 0%, #2d3748 100%);
+    border-radius: 15px;
+    max-width: 500px;
+    margin: 2rem auto;
+">
+    <div class="card-body py-4 px-5">
+        <div class="d-flex align-items-center justify-content-between">
+            <!-- مجموعة معلومات المستخدم -->
+            <div class="d-flex align-items-center gap-3">
+                <!-- الأيقونة والتفاصيل -->
+                <div class="d-flex align-items-center gap-3">
+                    <i class="fas fa-user-shield text-white fs-2"></i>
+                    <div class="user-details">
+                        <h4 class="text-white mb-0 fw-semibold"><?= htmlspecialchars($_SESSION['user_name']) ?></h4>
+                        <span class="badge bg-light text-dark mt-1" style="font-size: 0.75rem;">
+                            <?= ($_SESSION['user_type'] == 'admin') ? 'مدير النظام' : 'مستخدم' ?>
+                        </span>
+                    </div>
+                </div>
+                
+                <!-- الخط الفاصل -->
+                <div class="vertical-divider" style="
+                    border-right: 2px solid rgba(255,255,255,0.3);
+                    height: 40px;
+                    margin: 0 1rem;
+                "></div>
+            </div>
+
+            <!-- زر الخروج -->
+            <a href="<?= BASE_URL ?>logout.php" class="text-decoration-none hover-effect">
+                <i class="fas fa-sign-out-alt text-white fs-5"></i>
+            </a>
+        </div>
+    </div>
+</div>
+
+<style>
+.hover-effect {
+    transition: all 0.3s ease;
+    padding: 10px;
+    display: flex;
+    align-items: center;
+}
+
+.hover-effect:hover {
+    background: rgba(255,255,255,0.1);
+    border-radius: 8px;
+}
+
+.hover-effect:hover i {
+    transform: translateX(3px);
+    color: #e2e8f0 !important;
+}
+
+.user-details {
+    position: relative;
+    padding-left: 1rem;
+}
+
+.card {
+    transition: transform 0.3s ease;
+}
+
+.card:hover {
+    transform: translateY(-5px);
+}
+</style>
+
+
+/--/-/-/-/--/-/-/-/---------------------------/////////////////////////
+
+
+let slideIndex = 0;
+const slides = document.getElementsByClassName("mySlides");
+
+function showSlides() {
+    // إخفاء جميع الشرائح
+    Array.from(slides).forEach(slide => {
+        slide.classList.remove('active');
+    });
+
+    slideIndex++;
+
+    if (slideIndex > slides.length) {
+        slideIndex = 1;
+    }
+
+    // إظهار الشريحة الحالية
+    slides[slideIndex - 1].classList.add('active');
+
+    setTimeout(showSlides, 5000);
+}
+
+// بدء التشغيل التلقائي
+showSlides();

@@ -1,13 +1,14 @@
 
 <?php
 // دوال مساعدة
+if (!function_exists('getStatusColor')) {
 function getStatusColor($status) {
     switch ($status) {
         case 'approved': return 'success';
         case 'rejected': return 'danger';
         default: return 'warning';
     }
-}
+}}
 function getTypeColor($type) {
     switch ($type) {
         case 'purchase': return 'success';
@@ -36,7 +37,9 @@ function getTypeText($type) {
     $statuses = [
         'purchase' => 'شراء',
         'borrow' => 'استعارة',
-        'topup' => 'شحن رصيد'
+        'topup' => 'شحن رصيد',
+        'renew' => 'إعادة إستعارة',
+        'penalty' => 'غرامة'
     ];
     return $statuses[$type] ?? 'غير معروف';
 }
@@ -44,7 +47,9 @@ function getpTypeText($payment_type) {
     $statuses = [
         'purchase' => 'شراء',
         'borrow' => 'استعارة',
-        'topup' => 'شحن رصيد'
+        'topup' => 'شحن رصيد',
+        'renew' => 'إعادة إستعارة',
+        'penalty' => 'غرامة'
     ];
     return $statuses[$payment_type] ?? 'غير معروف';
 }

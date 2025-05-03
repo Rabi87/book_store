@@ -44,23 +44,6 @@ class DatabaseLogger {
     }
     
     /**
-     * قراءة السجلات من قاعدة البيانات
-     * @param int $limit عدد السجلات
-     * @return array
-     */
-    public static function readLogs($limit = 100) {
-        global $conn;
-        
-        $query = "
-            SELECT * FROM " . self::$table . " 
-            ORDER BY id DESC 
-            LIMIT " . (int)$limit;
-        
-        $result = $conn->query($query);
-        return ($result && $result->num_rows > 0) ? $result->fetch_all(MYSQLI_ASSOC) : [];
-    }
-    
-    /**
      * إنشاء الجدول إذا غير موجود
      */
     private static function createTableIfNotExists() {
@@ -81,10 +64,34 @@ class DatabaseLogger {
             error_log("فشل في إنشاء الجدول: " . $conn->error);
         }
     }
-}
 
-// ─────────────────────────────────────────────────────────────────────────────
-// مثال للاستخدام:
-// DatabaseLogger::log('login_failed', 'user123', 'محاولة دخول فاشلة');
-// $logs = DatabaseLogger::readLogs(50);
-// ─────────────────────────────────────────────────────────────────────────────
+    /**
+     * جلب إجمالي عدد السجلات
+     */
+    public static function getTotalLogs() {
+        global $conn;
+        
+        $result = $conn->query("SELECT COUNT(*) AS total FROM " . self::$table);
+        
+        if ($result === false) {
+            throw new Exception("فشل في جلب عدد السجلات: " . $conn->error);
+        }
+        
+        return $result->fetch_assoc()['total'];
+    }
+    
+    /**
+     * قراءة السجلات مع دعم الترقيم
+     */
+    public static function readLogs($limit, $offset = 0) {
+        global $conn;
+        $stmt = $conn->prepare("
+            SELECT * FROM " . self::$table . " 
+            ORDER BY created_at DESC 
+            LIMIT ? OFFSET ?
+        ");
+        $stmt->bind_param("ii", $limit, $offset);
+        $stmt->execute();
+        return $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+    }
+}

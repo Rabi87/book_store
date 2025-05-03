@@ -1,5 +1,5 @@
 <?php
-require __DIR__ . '/../includes/config.php';
+ob_start(); // إضافة تخزين مؤقت للإخراج
 if (!isset($_SESSION['user_id']) || $_SESSION['user_type'] != 'admin') {
     header("Location: ../login.php");
     exit();
@@ -29,13 +29,18 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['update_profile'])) {
                 SET name = '$name', email = '$email' $password_update 
                 WHERE id = $user_id";
         
-        if ($conn->query($sql) === TRUE) {
+        if ($conn->query($sql) ){
             $success = "تم تحديث البيانات بنجاح";
             $_SESSION['user_name'] = $name;
         } else {
             $error = "خطأ في التحديث: " . $conn->error;
         }
+        header("Location: dashboard.php?section=operations");
+ob_end_flush(); // إرسال المحتوى وتنظيف المخزن المؤقت
+exit();
+       
     }
+    
 }
 
 $sql = "SELECT * FROM users WHERE id = $user_id";
@@ -43,50 +48,144 @@ $result = $conn->query($sql);
 $user = $result->fetch_assoc();
 ?>
 
-<?php if ($error): ?>
-<div class="alert alert-danger"><?php echo $error; ?></div>
-<?php endif; ?>
-
-<?php if ($success): ?>
-<div class="alert alert-success"><?php echo $success; ?></div>
-<?php endif; ?>
-
-<form method="POST" action="">
-    <div class="mb-3">
-        <input type="text" name="name" placeholder="اسم المستخدم" class="form-control" value="<?php echo $user['name']; ?>" required>
-    </div>
-    <div class="mb-3">       
-        <input type="email" name="email" class="form-control" placeholder="البريد الإلكتروني" value="<?php echo $user['email']; ?>" required>
-    </div>
-    <div class="mb-3">
-        <div class="input-group">
-            <input 
-                type="password" 
-                name="password" 
-                id="password" 
-                class="form-control"
-                placeholder="كلمة المرور الجديدة (اختياري)"
-                style="padding-right: 45px;"
-            >
-            <button 
-                type="button" 
-                class="btn btn-outline-secondary border-start-0" 
-                onclick="togglePasswordVisibility()"
-                style="position: absolute; right: 0; z-index: 10; background: none; border: none;"
-            >
-                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-eye" viewBox="0 0 16 16" id="eyeIcon">
-                    <path d="M16 8s-3-5.5-8-5.5S0 8 0 8s3 5.5 8 5.5S16 8 16 8zM1.173 8a13.133 13.133 0 0 1 1.66-2.043C4.12 4.668 5.88 3.5 8 3.5c2.12 0 3.879 1.168 5.168 2.457A13.133 13.133 0 0 1 14.828 8c-.058.087-.122.183-.195.288-.335.48-.83 1.12-1.465 1.755C11.879 11.332 10.119 12.5 8 12.5c-2.12 0-3.879-1.168-5.168-2.457A13.134 13.134 0 0 1 1.172 8z"/>
-                    <path d="M8 5.5a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5zM4.5 8a3.5 3.5 0 1 1 7 0 3.5 3.5 0 0 1-7 0z"/>
-                </svg>
-            </button>
+<div class="container mt-4">
+    <div class="card border-0 shadow-sm">
+        <div class="card-header bg-gradient-primary text-white py-3">
+            <h5 class="mb-0 fw-bold">
+                <i class="fas fa-user-cog me-2"></i> تحديث الملف الشخصي
+            </h5>
         </div>
-        <small class="text-muted">اتركه فارغاً إذا لم ترغب في التغيير</small>
+        
+        <div class="card-body p-4">
+            <?php if ($error): ?>
+            <div class="alert alert-danger d-flex align-items-center">
+                <i class="fas fa-exclamation-circle me-3 fa-lg"></i>
+                <div>
+                    <h5 class="alert-heading mb-1">خطأ!</h5>
+                    <p class="mb-0"><?php echo $error; ?></p>
+                </div>
+            </div>
+            <?php endif; ?>
+            
+            <?php if ($success): ?>
+            <div class="alert alert-success d-flex align-items-center">
+                <i class="fas fa-check-circle me-3 fa-lg"></i>
+                <div>
+                    <h5 class="alert-heading mb-1">نجاح!</h5>
+                    <p class="mb-0"><?php echo $success; ?></p>
+                </div>
+            </div>
+            <?php endif; ?>
+            
+            <form method="POST" action="">
+                <div class="mb-4">
+                    <label class="form-label text-muted mb-2">اسم المستخدم</label>
+                    <div class="input-group">
+                        <span class="input-group-text bg-light">
+                            <i class="fas fa-user text-primary"></i>
+                        </span>
+                        <input 
+                            type="text" 
+                            name="name" 
+                            class="form-control border-start-0 ps-3" 
+                            value="<?php echo htmlspecialchars($user['name']); ?>" 
+                            required
+                        >
+                    </div>
+                </div>
+                
+                <div class="mb-4">
+                    <label class="form-label text-muted mb-2">البريد الإلكتروني</label>
+                    <div class="input-group">
+                        <span class="input-group-text bg-light">
+                            <i class="fas fa-envelope text-primary"></i>
+                        </span>
+                        <input 
+                            type="email" 
+                            name="email" 
+                            class="form-control border-start-0 ps-3" 
+                            value="<?php echo htmlspecialchars($user['email']); ?>" 
+                            required
+                        >
+                    </div>
+                </div>
+                
+                <div class="mb-4">
+                    <label class="form-label text-muted mb-2">كلمة المرور الجديدة</label>
+                    <div class="input-group">
+                        <span class="input-group-text bg-light">
+                            <i class="fas fa-lock text-primary"></i>
+                        </span>
+                        <input 
+                            type="password" 
+                            name="password" 
+                            id="password" 
+                            class="form-control border-start-0 ps-3"
+                            placeholder="اتركه فارغاً إذا لم ترغب في التغيير"
+                        >
+                        <button 
+                            type="button" 
+                            class="btn btn-outline-secondary" 
+                            onclick="togglePasswordVisibility()"
+                        >
+                            <i class="fas fa-eye" id="eyeIcon"></i>
+                        </button>
+                    </div>
+                    <small class="text-muted">يجب أن تحتوي على 8 أحرف على الأقل</small>
+                </div>
+                
+                <div class="d-grid gap-2 mt-4">
+                    <button 
+                        type="submit" 
+                        name="update_profile" 
+                        class="btn btn-primary btn-lg rounded-pill"
+                    >
+                        <i class="fas fa-save me-2"></i> حفظ التغييرات
+                    </button>
+                </div>
+            </form>
+        </div>
     </div>
+</div>
 
-    <button type="submit" name="update_profile" class="btn btn-primary">
-        حفظ التغييرات
-    </button>
-</form>
+<!-- الأنماط الإضافية -->
+<style>
+.card {
+    border-radius: 12px;
+    overflow: hidden;
+}
+
+.bg-gradient-primary {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
+
+.input-group-text {
+    border-right: none;
+}
+
+.form-control {
+    border-left: none;
+    padding-left: 0;
+}
+
+.form-control:focus {
+    box-shadow: none;
+    border-color: #ced4da;
+}
+
+.btn-outline-secondary {
+    border-color: #ced4da;
+}
+
+.btn-outline-secondary:hover {
+    background-color: #f8f9fa;
+}
+
+.alert {
+    border-radius: 8px;
+    border: none;
+}
+</style>
 
 <script>
 function togglePasswordVisibility() {
@@ -95,10 +194,12 @@ function togglePasswordVisibility() {
     
     if (passwordInput.type === 'password') {
         passwordInput.type = 'text';
-        eyeIcon.setAttribute('class', 'bi bi-eye-slash');
+        eyeIcon.classList.remove('fa-eye');
+        eyeIcon.classList.add('fa-eye-slash');
     } else {
         passwordInput.type = 'password';
-        eyeIcon.setAttribute('class', 'bi bi-eye');
+        eyeIcon.classList.remove('fa-eye-slash');
+        eyeIcon.classList.add('fa-eye');
     }
 }
 </script>

@@ -15,6 +15,29 @@
     /* أخضر */
     --sidebar-width: 250px;
 }
+/* تطبيق الخط على كافة العناصر */
+body,
+h1, h2, h3, h4, h5, h6,
+p,
+a,
+button,
+input,
+textarea,
+select,
+.navbar,
+.card,
+.alert {
+    font-family: 'Cairo', sans-serif !important;
+}
+
+/* عناصر Bootstrap التي تحتاج override */
+.btn,
+.form-control,
+.dropdown-menu,
+.modal-title,
+.table {
+    font-family: 'Cairo', sans-serif !important;
+}
 
 body {
     font-family: 'Cairo', sans-serif;
@@ -24,12 +47,6 @@ body {
 }
 
 
-
-.navbar {
-    background-color: var(--primary-color) !important;
-    color: var(--secondary-color) !important;
-    font-family: 'Cairo', sans-serif;
-}
 
 .navbar .navbar-toggler {
     color: var(--secondary-color) !important;
@@ -128,7 +145,7 @@ body {
     display: block;
     padding: 14px;
     background: var(--primary-color);
-    color: #ecf0f1;
+    color: var(--secondary-color);
     text-decoration: none;
     border-radius: 6px;
     transition: 0.3s;
@@ -237,6 +254,14 @@ body {
     /* Safari */
     backface-visibility: hidden;
 }
+.container-a {
+    position: absolute;
+    width: 70%;
+    height: 100%;
+   
+    transform: translate(-50%, -50%);
+}
+
 
 /* Style the front side (fallback if image is missing) */
 .flip-card-front {
@@ -719,4 +744,3 @@ body {
     background-repeat: no-repeat;
     background-size: 20px;
 }
-

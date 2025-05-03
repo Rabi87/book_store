@@ -1,5 +1,9 @@
 <?php
-session_start();
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();}
+error_reporting(E_ALL);
+ini_set('display_errors', 1);
+ini_set('display_startup_errors', 1);
 require __DIR__ . '/includes/config.php';
 
 // التحقق من تسجيل الدخول
@@ -12,9 +16,9 @@ if (!isset($_SESSION['user_id'])) {
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['submit_rating'])) {
     try {
         // طباعة القيم المرسلة للتحقق
-        echo "<pre>";
-        print_r($_POST);
-        echo "</pre>";
+        //echo "<pre>";
+       // print_r($_POST);
+      //  echo "</pre>";
         
         $request_id = (int)$_POST['request_id'];
         $rating = (int)$_POST['rating'];
@@ -125,7 +129,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['complete_reading'])) 
             $_SESSION['error'] = "لم يتم العثور على الطلب أو تم تسجيله مسبقاً!";
         }
 
-        header("Location: read_book.php?request_id=" . $request_id);
+        header("Location:user/dashboard.php");
         exit();
 
     } catch (Exception $e) {
@@ -164,6 +168,24 @@ try {
 } catch (Exception $e) {
     die("حدث خطأ: " . $e->getMessage());
 }
+// جلب بيانات الكتاب و due_date و renewed
+$stmt_book = $conn->prepare("
+    SELECT b.*, br.status, br.due_date, br.renewed 
+    FROM borrow_requests br
+    JOIN books b ON br.book_id = b.id
+    WHERE br.id = ? AND br.user_id = ?
+");
+$stmt_book->bind_param("ii", $request_id, $user_id);
+$stmt_book->execute();
+$book = $stmt_book->get_result()->fetch_assoc();
+
+// حساب الأيام المتبقية
+$due_date = new DateTime($book['due_date']);
+$today = new DateTime();
+$interval = $today->diff($due_date);
+$days_left = $interval->days;
+$is_renewable = $days_left <= 2;
+$is_passed = $due_date < $today;
 
 // ━━━━━━━━━━ عرض الصفحة ━━━━━━━━━━
 ?>
@@ -237,36 +259,20 @@ try {
                 <input type="hidden" name="request_id" value="<?= $request_id ?>">
                 <button type="submit" name="complete_reading" class="btn btn-primary btn-sm">تمت القراءة</button>
             </form>
-            <!-- نموذج التقييم مع التعديلات -->
-            <div class="rating-form">
-                <form method="POST" class="d-flex align-items-center gap-2">
-                    <input type="hidden" name="request_id" value="<?= $request_id ?>">
-
-                    <!-- النجوم -->
-                    <div class="star-rating">
-                        <input type="radio" id="star5" name="rating" value="5" required>
-                        <label for="star5"><i class="fas fa-star"></i></label>
-                        <input type="radio" id="star4" name="rating" value="4">
-                        <label for="star4"><i class="fas fa-star"></i></label>
-                        <input type="radio" id="star3" name="rating" value="3">
-                        <label for="star3"><i class="fas fa-star"></i></label>
-                        <input type="radio" id="star2" name="rating" value="2">
-                        <label for="star2"><i class="fas fa-star"></i></label>
-                        <input type="radio" id="star1" name="rating" value="1">
-                        <label for="star1"><i class="fas fa-star"></i></label>
-                    </div>
-
-                    <!-- زر الصوت -->
-                    <button type="submit" name="submit_rating" class="btn btn-info btn-sm">صوُت</button>
-                </form>
-            </div>
-
+            <!-- زر تجديد الاستعارة -->
+            <?php if ($is_renewable || $is_passed): ?>
+            <form method="POST" action="process.php">
+                <input type="hidden" name="request_id" value="<?= $request_id ?>">
+                <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?>">
+                <button type="submit" name="actions" value="renew" class="btn btn-warning">
+                    تجديد الاستعارة
+                </button>
+            </form>
+            <?php endif; ?>
             <!-- العناصر على اليمين في مجموعة واحدة -->
             <div class="d-flex align-items-center gap-2">
                 <!-- زر تمت القراءة -->
-                <a href="user/dashboard.php" class="btn btn-secondary btn-sm">العودة للمجموعات</a>
-
-
+                <a href="user/dashboard.php" class="btn btn-danger btn-sm">العودة للوحة التحكم</a>
             </div>
         </div>
 
@@ -287,6 +293,33 @@ try {
                 <iframe src="<?= htmlspecialchars($file_path) ?>#toolbar=0&navpanes=0" width="100%" height="600px"
                     frameborder="0"></iframe>
             </div>
+        </div>
+
+        <!-- نموذج التقييم مع التعديلات -->
+        <div class="rating-form">
+
+            <form method="POST" class="d-flex align-items-center gap-2">
+                <input type="hidden" name="request_id" value="<?= $request_id ?>">
+                <textarea type="text" name="comment" class="form-control" rows="3" placeholder="أكتب مراجعاتك للكتاب .."
+                    style="width:900px;"></textarea>
+
+                <!-- النجوم -->
+                <div class="star-rating">
+                    <input type="radio" id="star5" name="rating" value="5" required>
+                    <label for="star5"><i class="fas fa-star"></i></label>
+                    <input type="radio" id="star4" name="rating" value="4">
+                    <label for="star4"><i class="fas fa-star"></i></label>
+                    <input type="radio" id="star3" name="rating" value="3">
+                    <label for="star3"><i class="fas fa-star"></i></label>
+                    <input type="radio" id="star2" name="rating" value="2">
+                    <label for="star2"><i class="fas fa-star"></i></label>
+                    <input type="radio" id="star1" name="rating" value="1">
+                    <label for="star1"><i class="fas fa-star"></i></label>
+                </div>
+
+                <!-- زر الصوت -->
+                <button type="submit" name="submit_rating" class="btn btn-info btn-sm">صوُت</button>
+            </form>
         </div>
     </div>
 

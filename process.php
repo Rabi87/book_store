@@ -1,18 +1,16 @@
 <?php
-
 if (session_status() === PHP_SESSION_NONE) {
-    session_start();}
-   
-
+    session_start();
+}
+error_reporting(E_ALL);
+ini_set('display_errors', 1);
+ini_set('display_startup_errors', 1);  
 require __DIR__ . '/includes/config.php';
 require __DIR__ . '/includes/db_logger.php';
-
-
 //if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    // التحقق من وجود CSRF Token في الطلب والجلسة
- //   if (!isset($_POST['csrf_token']) || $_POST['csrf_token'] !== $_SESSION['csrf_token']) {
-  //      die("Invalid CSRF Token");
-  //  }
+ // if (!isset($_POST['csrf_token']) || $_POST['csrf_token'] !== $_SESSION['csrf_token']) {
+   //    die("Invalid CSRF Token");
+// }
 //}
 // إيقاف عرض الأخطاء للمستخدمين
 
@@ -102,12 +100,18 @@ if (isset($_POST['login'])) {
         $result = $stmt->get_result();
         
         if ($result->num_rows === 0) {
+            $_SESSION['erroruser'] = "اسم المستخدم غير موجود";
             throw new Exception("المستخدم غير موجود");
         }
-        
+                
         $user = $result->fetch_assoc();
+        if ($user['status'] === 0) {
+            $_SESSION['error'] = "الحساب غير مفعل, يرجى رفع شكوى و إعادة المحاولة بعد 24 ساعة ";
+            throw new Exception("المستخدم غير مفعل");
+        }
         
         if (!password_verify($password, $user['password'])) {
+            $_SESSION['errorpass'] = "كلمة المرور خاطئة";
             throw new Exception("كلمة المرور خاطئة");
         }
         
@@ -154,10 +158,12 @@ if (isset($_POST['login'])) {
             $name,
             $e->getMessage()
         );
-        $_SESSION['error'] = "بيانات الدخول غير صحيحة";
-        header("Location: login.php");
+        
+        
+        header("Location:" . BASE_URL . "login.php");
+        exit();
     }
-    exit();
+   
 }
 
 // ======== معالجة نسيان كلمة المرور ========
@@ -270,6 +276,10 @@ if (isset($_POST['add_book']) && isAdmin()) {
         $category_id = (int)$_POST['category_id'];
         $evaluation = (float)$_POST['evaluation'];
         $description = htmlspecialchars($_POST['description']);
+        $material_type = htmlspecialchars($_POST['material_type']);
+        $page_count = isset($_POST['page_count']) ? (int)$_POST['page_count'] : null;
+        $publication_date = isset($_POST['publication_date']) ? $_POST['publication_date'] : null;
+        $isbn = isset($_POST['isbn']) ? htmlspecialchars($_POST['isbn']) : null;
 
         
         // معالجة تحميل الصورة
@@ -304,18 +314,33 @@ if (isset($_POST['add_book']) && isAdmin()) {
 
         
         // إدخال البيانات
-        $stmt = $conn->prepare("
+                $stmt = $conn->prepare("
             INSERT INTO books 
-            (title, author, type, quantity, price, cover_image, category_id,file_path, evaluation, description)   
-            VALUES (?, ?, ?, ?, ?, ?, ?,?,?,?)
+            (title, author, type, material_type, page_count, publication_date, isbn, quantity, price, cover_image, category_id, file_path, evaluation, description)   
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ");
-        
+                
         if (!$stmt) {
             throw new Exception("خطأ في إعداد الاستعلام: " . $conn->error);
         }
         
-        $stmt->bind_param("sssidsisss", $title, $author, $type, $quantity, $price, $new_filename, $category_id, $file_target_path, $evaluation, $description);
-        
+        $stmt->bind_param(
+            "ssssisssisssds", // أنواع البيانات (s=string, i=integer, d=double)
+            $title, 
+            $author, 
+            $type,
+            $material_type,
+            $page_count,
+            $publication_date,
+            $isbn,
+            $quantity,
+            $price,
+            $target_path,
+            $category_id,
+            $file_target_path,
+            $evaluation,
+            $description
+        );
         if ($stmt->execute()) {
             $_SESSION['success'] = "تمت إضافة الكتاب بنجاح!";
         } else {
@@ -338,6 +363,7 @@ if (isset($_POST['update_book']) && isAdmin()) {
         //if (!isset($_POST['csrf_token']) || $_POST['csrf_token'] !== $_SESSION['csrf_token']) {
          //   throw new Exception('طلب غير مصرح به');
        // }
+       
 
         // جلب البيانات الأساسية
         $book_id = (int)$_POST['book_id'];
@@ -349,6 +375,13 @@ if (isset($_POST['update_book']) && isAdmin()) {
         $category_id = (int)$_POST['category_id'];
         $evaluation = (float)$_POST['evaluation'];
         $description = htmlspecialchars($_POST['description']);
+        $material_type = htmlspecialchars($_POST['material_type']);
+        if (!in_array($material_type, ['كتاب', 'مجلة', 'جريدة'])) {
+            throw new Exception("نوع المادة غير صحيح!");
+        }
+        $page_count = isset($_POST['page_count']) ? (int)$_POST['page_count'] : null;
+        $publication_date = isset($_POST['publication_date']) ? $_POST['publication_date'] : null;
+        $isbn = isset($_POST['isbn']) ? htmlspecialchars($_POST['isbn']) : null;
 
         // جلب البيانات الحالية
         $stmt = $conn->prepare("SELECT cover_image, file_path FROM books WHERE id = ?");
@@ -387,20 +420,29 @@ if (isset($_POST['update_book']) && isAdmin()) {
         // تحديث البيانات في قاعدة البيانات
         $stmt = $conn->prepare("
             UPDATE books SET 
-            title = ?, 
-            author = ?, 
-            type = ?, 
-            quantity = ?, 
-            price = ?, 
-            category_id = ?,
-            cover_image = ?,
-            file_path = ? ,
-            description=?,
-            evaluation=?
+                title = ?, 
+                author = ?, 
+                type = ?, 
+                quantity = ?, 
+                price = ?, 
+                category_id = ?,
+                cover_image = ?,
+                file_path = ?,
+                description = ?,
+                evaluation = ?,
+                material_type = ?,
+                page_count = ?,
+                publication_date = ?,
+                isbn = ? 
             WHERE id = ?
         ");
-        
-        $stmt->bind_param("sssidissssi", 
+
+        if (!$stmt) {
+            throw new Exception("❌ خطأ في إعداد الاستعلام: " . $conn->error);
+        }
+
+        $stmt->bind_param(
+            "sssidissssssssi", 
             $title, 
             $author, 
             $type, 
@@ -411,29 +453,26 @@ if (isset($_POST['update_book']) && isAdmin()) {
             $file_path,
             $description,
             $evaluation,
+            $material_type,
+            $page_count,
+            $publication_date,
+            $isbn,
             $book_id
         );
 
         if ($stmt->execute()) {
             $_SESSION['success'] = "✅ تم تحديث الكتاب بنجاح!";
-        } 
-        else
-         {
+            header("Location:" .BASE_URL."admin/dashboard.php?section=books");
+        } else {
             throw new Exception("❌ فشل في التحديث: " . $stmt->error);
         }
 
-        header("Location: " . BASE_URL . "admin/dashboard.php");
-
-    } 
-    catch (Exception $e) 
-    {
+    } catch (Exception $e) {
         $_SESSION['error'] = $e->getMessage();
-        header("Location: " . BASE_URL . "admin/edit_book.php?id=" . $book_id);
-      
+        header("Location:".BASE_URL."admin/edit_book.php?id=" . $book_id);
     }
     exit();
 }
-
 // ======== معالجة طلب الاستعارة/الشراء ========
 if (isset($_POST['action'])) {
     try {
@@ -498,7 +537,7 @@ if (isset($_POST['action'])) {
         $admin = $conn->query("SELECT id FROM users WHERE user_type = 'admin' LIMIT 1")->fetch_assoc();
         if ($admin) {
             $message = "طلب جديد: " . ($action === 'borrow' ? "استعارة" : "شراء") . " كتاب";
-            $link = BASE_URL . "admin/manage_loan.php";
+            $link = BASE_URL . "/admin/dashboard.php?section=ops";
         
             $stmt_notif = $conn->prepare("
                 INSERT INTO notifications 
@@ -508,8 +547,8 @@ if (isset($_POST['action'])) {
             $stmt_notif->bind_param("issi", $admin['id'], $message, $link, $request_id); // إضافة request_id
             $stmt_notif->execute();
         }
-        $_SESSION['success'] = "تم إرسال الطلب بنجاح!";
-        header("Location: index.php");
+        $_SESSION['success'] = "تم ارسال الطلب بنجاح , يمكنك متابعة الطلب في قسم الطلبات العالقة في لوحة التحكم الخاصة بك";
+        header("Location:home.php");
 
         DatabaseLogger::log(
             'loan_success',
@@ -522,6 +561,105 @@ if (isset($_POST['action'])) {
         header("Location: index.php");
     }
     exit();
+}
+
+// ======== معالجة تجديد الاستعارة ========
+if (isset($_POST['actions']) && $_POST['actions'] === 'renew') {
+    try {
+         // التحقق من CSRF Token
+         if (!isset($_POST['csrf_token']) || $_POST['csrf_token'] !== $_SESSION['csrf_token']) {
+            throw new Exception('طلب غير مصرح به');
+        }
+        $actions = $_POST['actions'];
+        $request_id = (int)$_POST['request_id'];
+        $user_id = $_SESSION['user_id'];
+
+        // ━━━━━━━━━━ التحقق من صلاحية التجديد ━━━━━━━━━━
+        $stmt_check = $conn->prepare("
+            SELECT due_date, renewed 
+            FROM borrow_requests 
+            WHERE 
+                id = ? 
+                AND user_id = ? 
+                AND status = 'approved'
+                AND reading_completed = 0
+        ");
+        $stmt_check->bind_param("ii", $request_id, $user_id);
+        $stmt_check->execute();
+        $request_data = $stmt_check->get_result()->fetch_assoc();
+
+        if (!$request_data) {
+            throw new Exception("الطلب غير صالح للتجديد");
+        }
+
+        // التحقق من المدة المتبقية (يومين أو أقل)
+        $due_date = new DateTime($request_data['due_date']);
+        $today = new DateTime();
+        $interval = $today->diff($due_date);
+        $days_left = $interval->days;
+        $is_passed = $due_date < $today;
+
+        if ($days_left > 2 && !$is_passed) {
+            throw new Exception("يمكن التجديد قبل يومين من انتهاء المدة فقط");
+        }
+
+        // التحقق من عدد التجديدات (مثال: 3 مرات كحد أقصى)
+        if ($request_data['renewed'] >= 3) {
+            throw new Exception("وصلت إلى الحد الأقصى للتجديد");
+        }
+
+        // ━━━━━━━━━━ التحقق من الرصيد ━━━━━━━━━━
+        $renew_cost = 5000; // تكلفة التجديد
+        $stmt_balance = $conn->prepare("SELECT balance FROM wallets WHERE user_id = ?");
+        $stmt_balance->bind_param("i", $user_id);
+        $stmt_balance->execute();
+        $balance = $stmt_balance->get_result()->fetch_assoc()['balance'];
+
+        if ($balance < $renew_cost) {
+            $_SESSION['error'] = "رصيدك غير كافي لتجديد الاستعارة!";
+            header("Location: read_book.php?request_id=" . $request_id);
+            exit();
+        }
+
+        // ━━━━━━━━━━ إرسال إشعار للمدير ━━━━━━━━━━
+        $admin_id = 5; // أو جلب id المدير من قاعدة البيانات
+        $message = "طلب تجديد استعارة (الطلب #$request_id)";
+        $link = "admin/renew_requests.php?request_id=$request_id";
+
+        $stmt_notify = $conn->prepare("
+            INSERT INTO notifications 
+            (user_id, message, link, request_id) 
+            VALUES (?, ?, ?, ?)
+        ");
+        $stmt_notify->bind_param("issi", $admin_id, $message, $link, $request_id);
+        $stmt_notify->execute();
+
+        // ━━━━━━━━━━ تحديث حالة التجديد ━━━━━━━━━━
+        $new_renewed = $request_data['renewed'] + 1;
+                $stmt_renew = $conn->prepare("
+            UPDATE borrow_requests 
+            SET 
+                renewed = ?,
+                status = 'pending',
+                processed_at = NOW(),
+                due_date = NOW(),
+                request_date=NOW(),
+                loan_duration = 0,
+                type=?
+            WHERE id = ?
+        ");
+        $stmt_renew->bind_param("isi", $new_renewed, $actions,$request_id);
+        $stmt_renew->execute();
+
+        $_SESSION['success'] = "تم إرسال طلب التجديد لإدارة المكتبة!";
+        header("Location: read_book.php?request_id=" . $request_id);
+        exit();
+
+    } catch (Exception $e) {
+        $_SESSION['error'] = "خطأ: " . $e->getMessage();
+        header("Location: read_book.php?request_id=" . $request_id);
+        exit();
+    }
 }
 
 // ======== معالجة حذف الطلب ========
@@ -558,6 +696,43 @@ if (isset($_POST['delete_request']) && isset($_SESSION['user_id'])) {
     exit();
 }
 
+// ======== معالجة إرسال الشكوى ========
+if (isset($_POST['submit_complaint'])) {
+    $email = filter_var($_POST['email'], FILTER_SANITIZE_EMAIL);
+    $complaint = htmlspecialchars($_POST['complaint']);
+
+    try {
+        // التحقق من صحة البريد الإلكتروني
+        if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+            throw new Exception("البريد الإلكتروني غير صالح");
+        }
+
+        // إدخال الشكوى في قاعدة البيانات
+        $stmt = $conn->prepare("INSERT INTO complaints (email, complaint) VALUES (?, ?)");
+        $stmt->bind_param("ss", $email, $complaint);
+        
+        if ($stmt->execute()) {
+            $_SESSION['success'] = "تم إرسال الشكوى بنجاح!";
+        } else {
+            throw new Exception("فشل في إرسال الشكوى");
+        }
+
+        header("Location: index.php");
+        exit();
+
+    } catch (Exception $e) {
+        $_SESSION['error'] = $e->getMessage();
+        header("Location: complaint.php");
+        exit();
+    }
+}
+// ======== معالجة تمييز الشكوى كمحلولة ========
+if (isset($_GET['resolve_complaint']) && isAdmin()) {
+    $complaint_id = (int)$_GET['resolve_complaint'];
+    $conn->query("UPDATE complaints SET status = 'resolved' WHERE id = $complaint_id");
+    header("Location:" . BASE_URL . "admin/dashboard.php");
+    exit();
+}
 // إذا لم يتم التعرف على أي عملية
 die("طلب غير معروف");
 ?>

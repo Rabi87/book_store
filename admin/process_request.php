@@ -76,7 +76,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $conn->begin_transaction();
         
         $new_status = ($action === 'approve') ? 'approved' : 'rejected';
-        $loan_duration = 14;
+        if($type === 'borrow' ||$type === 'renew'){
+            $loan_duration = 14;
+        }
+        
 
         if ($action === 'approve') {
             // تحديث حالة الطلب إلى pending_payment
@@ -91,6 +94,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             ");
             $stmt->bind_param("siii", $new_status, $loan_duration, $loan_duration, $request_id);
             $stmt->execute();
+            $exp_date = date('Y-m-d H:i:s', strtotime("+$loan_duration days"));
 
             // إضافة سجل دفع جديد مع التعديلات
             $transaction_id = 'TRX_' . bin2hex(random_bytes(8));
@@ -130,10 +134,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $payment_link = BASE_URL . "read_book.php?request_id=" . $request_id;
             
             $stmt_notif = $conn->prepare("
-                INSERT INTO notifications (user_id, message, link)
-                VALUES (?, ?, ?)
+                INSERT INTO notifications (user_id, message, link,request_id,expires_at)
+                VALUES (?, ?, ?, ?,?)
             ");
-            $stmt_notif->bind_param("iss", $user_id, $message, $payment_link);
+            $stmt_notif->bind_param("issis", $user_id, $message, $payment_link,$request_id,$exp_date);
             $stmt_notif->execute();
 
         } else {
