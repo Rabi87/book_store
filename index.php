@@ -129,12 +129,21 @@ marquee {
 
 .card-content {
     padding: 15px;
+    decoration:none;
    
 }
 
 .card-content h3 {
     color: #389;
     margin-bottom: 10px;
+    decoration:none;
+}
+.card-link {
+    text-decoration: none !important;
+}
+
+.card-link:hover {
+    text-decoration: none !important;
 }
 
 /* تجاوبية */

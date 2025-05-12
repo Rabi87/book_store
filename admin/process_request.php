@@ -38,20 +38,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $stmt_amount->execute();
         $amount = $stmt_amount->get_result()->fetch_assoc()['amount'];
 
-        // الحصول على المبلغ من الطلب بدلًا من القيمة الثابتة
+        // الحصول على نوع العملية
         $stmt_type = $conn->prepare("SELECT type FROM borrow_requests WHERE id = ?");
         $stmt_type->bind_param("i", $request_id);
         $stmt_type->execute();
         $type = $stmt_type->get_result()->fetch_assoc()['type'];
         
+
+        $stmt_book = $conn->prepare("SELECT book_id FROM borrow_requests WHERE id = ?");
+        $stmt_book->bind_param("i", $request_id);
+        $stmt_book->execute();
+        $result = $stmt_book->get_result();
+        $book_id = $result->fetch_assoc()['book_id']; // book_id هنا يتم استخراج
         
         // التحقق من الرصيد الحالي
         $stmt_balance = $conn->prepare("SELECT balance FROM wallets WHERE user_id = ?");
         $stmt_balance->bind_param("i", $user_id);
         $stmt_balance->execute();
         $balance = $stmt_balance->get_result()->fetch_assoc()['balance'];
-        
-   
         
         if ($balance < $amount) {
             throw new Exception("رصيد المستخدم غير كافٍ لإكمال العملية");
@@ -76,11 +80,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $conn->begin_transaction();
         
         $new_status = ($action === 'approve') ? 'approved' : 'rejected';
+        
         if($type === 'borrow' ||$type === 'renew'){
             $loan_duration = 14;
-        }
-        
-
+        }else{ $loan_duration = 1000;}
         if ($action === 'approve') {
             // تحديث حالة الطلب إلى pending_payment
             $stmt = $conn->prepare("
@@ -102,14 +105,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 INSERT INTO payments (
                     user_id,    
                     request_id, 
+                    book_id,
                     amount, 
                     status,
                     payment_date,
                     payment_type,
                     transaction_id
-                ) VALUES (?,?, ?, 'completed', NOW(), ?,?)
+                ) VALUES (?,?,?,?, 'completed', NOW(), ?,?)
             ");
-            $stmt_payment->bind_param("sidss",$user_id, $request_id, $amount,$type,$transaction_id); // 'd' لـ decimal
+            $stmt_payment->bind_param("siidss",$user_id, $request_id,$book_id, $amount,$type,$transaction_id); // 'd' لـ decimal
             $stmt_payment->execute();
 
             // الحصول على user_id من الطلب

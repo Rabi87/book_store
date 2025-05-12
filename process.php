@@ -480,10 +480,55 @@ if (isset($_POST['action'])) {
         if (!isset($_POST['csrf_token']) || $_POST['csrf_token'] !== $_SESSION['csrf_token']) {
             throw new Exception('طلب غير مصرح به');
         }
+        $book_id = (int)$_POST['book_id'];
+
+        // ━━━━━━━━━━ جلب سعر الكتاب من جدول books ━━━━━━━━━━
+        $stmt_book = $conn->prepare("SELECT price FROM books WHERE id = ?");
+        $stmt_book->bind_param("i", $book_id);
+        $stmt_book->execute();
+        $result_book = $stmt_book->get_result();
+        
+        if ($result_book->num_rows === 0) {
+            throw new Exception("الكتاب غير موجود!");
+        }
+        
+        $book_data = $result_book->fetch_assoc();
+        $book_price = $book_data['price'];
+        $stmt_book->close();
+
+        // ━━━━━━━━━━ تحديد المبلغ المطلوب بناءً على نوع العملية ━━━━━━━━━━
+        if ($action === 'borrow') {
+            // جلب سعر الإعارة من الإعدادات إذا لزم الأمر
+            $stmt_rental = $conn->prepare("SELECT value FROM settings WHERE name='purchase_price'");
+            $stmt_rental->execute();
+            $result_rental = $stmt_rental->get_result();
+            $row_rental = $result_rental->fetch_assoc();
+            $purchase_price = $row_rental['value'];
+            $stmt_rental->close();
+        } else {
+            // استخدام سعر الكتاب للشراء
+            $purchase_price = $book_price;
+        }
+
+        // جلب سعر الإعارة
+        $stmt_rental = $conn->prepare("SELECT value FROM settings WHERE name='rental_price'");
+        $stmt_rental->execute();
+        $result_rental = $stmt_rental->get_result();
+        $row_rental = $result_rental->fetch_assoc();
+        $rental_price = $row_rental['value'];
+        $stmt_rental->close();
+
+        // جلب غرامة التأخير
+        $stmt_late = $conn->prepare("SELECT value FROM settings WHERE name='late_fee'");
+        $stmt_late->execute();
+        $result_late = $stmt_late->get_result();
+        $row_late = $result_late->fetch_assoc();
+        $late_fee = $row_late['value'];
+        $stmt_late->close();
         
         // تحديد نوع العملية والمبلغ المطلوب
         $action = $_POST['action'];
-        $required_amount = ($action === 'borrow') ? 5000 : 25000;
+        $required_amount = ($action === 'borrow') ? $rental_price : $purchase_price;
         $book_id = (int)$_POST['book_id'];
 
         // ━━━━━━━━━━ التحقق من عدم وجود استعارة نشطة ━━━━━━━━━━
@@ -505,7 +550,7 @@ if (isset($_POST['action'])) {
 
         if ($check_borrow->get_result()->num_rows > 0) {
             $_SESSION['error'] = "لا يمكنك استعارة هذا الكتاب الآن. لديك استعارة نشطة!";
-            header("Location: index.php"); // أو الصفحة الحالية
+            header("Location:home.php"); // أو الصفحة الحالية
             exit();
         }}
         

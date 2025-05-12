@@ -41,7 +41,8 @@ select,
 
 body {
     font-family: 'Cairo', sans-serif;
-    background-color: linear-gradient(to right, #f8f9fa,rgb(159, 166, 173));
+    
+    background:#e7edf0;
     direction: rtl;
     text-align: right;
 }

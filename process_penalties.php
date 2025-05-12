@@ -10,13 +10,13 @@ $conn->begin_transaction();
 
 // جلب إعدادات الغرامات من قاعدة البيانات
 $settings = [];
-$result = $conn->query("SELECT key_name, key_value FROM settings WHERE key_name IN ('daily_penalty', 'borrow_fee', 'purchase_price')");
+$result = $conn->query("SELECT name,value FROM settings WHERE name IN ('late_fee', 'borrow_fee', 'purchase_price')");
 while ($row = $result->fetch_assoc()) {
-    $settings[$row['key_name'] = $row['key_value']];
+    $settings[$row['name'] = $row['value']];
 }
 
 // التحقق من وجود جميع الإعدادات المطلوبة
-if (!isset($settings['daily_penalty'])) {
+if (!isset($settings['late_fee'])) {
     die("إعدادات الغرامات غير موجودة في قاعدة البيانات!");
 }
 
@@ -58,7 +58,7 @@ try {
         $days_overdue = $row['new_days_overdue'];
         if ($days_overdue <= 0) continue;
 
-        $penalty_amount = $days_overdue * $settings['daily_penalty'];
+        $penalty_amount = $days_overdue * $settings['late_fee'];
         $user_id = $row['user_id'];
         $current_balance = $row['balance'];
 

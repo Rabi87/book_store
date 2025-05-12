@@ -1,6 +1,7 @@
 <?php
 // بدء الجلسة وإدارة المخرجات
-ob_start(); // تخزين الإخراج في المخزن المؤقت
+
+// تخزين الإخراج في المخزن المؤقت
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
@@ -9,20 +10,30 @@ ini_set('display_errors', 1);
 ini_set('display_startup_errors', 1);
 
 require __DIR__ . '/../includes/config.php';
-require __DIR__ . '/../includes/header.php';
+
 
 // ------ التحقق من صلاحيات المستخدم ------ //
-if (!isset($_SESSION['user_id'])) {
-    header('Location: ' . BASE_URL . 'login.php');
-    
+if (!isset($_SESSION['user_id']) || $_SESSION['user_type'] != 'admin') {
+    header("Location:" .BASE_URL."/login.php");
     exit();
+}
+
+// جلب الإعدادات الحالية
+$settings = [];
+$result = $conn->query("SELECT name, value FROM settings");
+if ($result && $result->num_rows > 0) {
+    while ($row = $result->fetch_assoc()) {
+        $settings[$row['name']] = $row['value'];
+    }
+    $result->close();
+} else {
+    die("خطأ في جلب الإعدادات: " . $conn->error);
 }
 
 // ------ تحديد القسم النشط ------ //
 $active_section = isset($_GET['section']) ? htmlspecialchars($_GET['section']) : 'personal';
-
+require __DIR__ . '/../includes/header.php';
 ?>
-
 
 <!-- عرض الرسائل التحذيرية -->
 <?php if (isset($_SESSION['error'])): ?>
@@ -36,6 +47,17 @@ Swal.fire({
 <?php unset($_SESSION['error']);?>
 <?php endif;?>
 
+<?php if (isset($_SESSION['succaaess'])): ?>
+<script>
+Swal.fire({
+    icon: 'error',
+    title: 'خطأ!',
+    text: '<?= addslashes($_SESSION['succaaess']) ?>'
+});
+</script>
+<?php unset($_SESSION['succaaess']); ?>
+<?php endif; ?>
+
 <?php if (isset($_SESSION['success'])):?>
 <script>
 Swal.fire({
@@ -48,6 +70,7 @@ Swal.fire({
 <?php endif;?>
 <div class="container-fluid">
     <div class="row">
+
         <!-- زر الشريط الجانبي للجوال -->
         <button class="btn btn-primary sidebar-toggler d-lg-none" onclick="toggleSidebar()">
             <i class="fas fa-bars"></i>
@@ -57,83 +80,99 @@ Swal.fire({
         <div class="col-md-3 sidebar p-4">
             <div class="d-grid gap-2">
                 <button onclick="showSection('personal')"
-                    class="btn btn-outline-primary <?= ($active_section == 'personal') ? 'active' : '' ?>">
+                    class="btn text-start text-white d-flex align-items-center gap-3 py-3 hover-effect  <?= ($active_section == 'personal') ? 'active' : '' ?>"
+                    style="background: linear-gradient(135deg, #4a5568 0%, #2d3748 100%);border-radius: 15px;">
                     <i class="fas fa-user"></i> الرئيسية
                 </button>
 
                 <button onclick="showSection('operations')"
-                    class="btn btn-outline-info <?= ($active_section == 'operations') ? 'active' : '' ?>">
+                    class="btn btn-outline-info text-start bg-dark text-white d-flex align-items-center gap-3 py-3 hover-effect  <?= ($active_section == 'operations') ? 'active' : '' ?>"
+                    style="background: linear-gradient(135deg, #4a5568 0%, #2d3748 100%);border-radius: 15px;">
                     <i class="fas fa-sync-alt"></i> الملف الشخصي
-                </button>             
-            
+                </button>
+
                 <button onclick="showSection('books')"
-                    class="btn btn-outline-success <?= ($active_section == 'books') ? 'active' : '' ?>">
+                    class="btn btn-outline-success text-start bg-dark text-white d-flex align-items-center gap-3 py-3 hover-effect  <?= ($active_section == 'books') ? 'active' : '' ?>"
+                    style="background: linear-gradient(135deg, #4a5568 0%, #2d3748 100%);border-radius: 15px;">
                     <i class="fas fa-book"></i> إدارة الكتب
                 </button>
 
                 <button onclick="showSection('ops')"
-                    class="btn btn-outline-danger <?= ($active_section == 'ops') ? 'active' : '' ?>">
+                    class="btn btn-outline-danger text-start bg-dark text-white d-flex align-items-center gap-3 py-3 hover-effect  <?= ($active_section == 'ops') ? 'active' : '' ?>"
+                    style="background: linear-gradient(135deg, #4a5568 0%, #2d3748 100%);border-radius: 15px;">
                     <i class="fas fa-book"></i> إدارة الطلبات
                 </button>
-            
+
                 <button onclick="showSection('sales')"
-                    class="btn btn-outline-warning <?= ($active_section == 'sales') ? 'active' : '' ?>">
+                    class="btn btn-outline-warning text-start bg-dark text-white d-flex align-items-center gap-3 py-3 hover-effect  <?= ($active_section == 'sales') ? 'active' : '' ?>"
+                    style="background: linear-gradient(135deg, #4a5568 0%, #2d3748 100%);border-radius: 15px;">
                     <i class="fas fa-coins"></i> إدارة المبيعات
                 </button>
 
                 <button onclick="showSection('users')"
-                    class="btn btn-outline-info <?= ($active_section == 'users') ? 'active' : '' ?>">
+                    class="btn btn-outline-info text-start bg-dark text-white d-flex align-items-center gap-3 py-3 hover-effect  <?= ($active_section == 'users') ? 'active' : '' ?>"
+                    style="background: linear-gradient(135deg, #4a5568 0%, #2d3748 100%);border-radius: 15px;">
                     <i class="fas fa-users"></i> إدارة المستخدمين
                 </button>
 
                 <button onclick="showSection('bk')"
-                    class="btn btn-outline-info <?= ($active_section == 'bk') ? 'active' : '' ?>">
+                    class="btn btn-outline-info text-start bg-dark text-white d-flex align-items-center gap-3 py-3 hover-effect  <?= ($active_section == 'bk') ? 'active' : '' ?>"
+                    style="background: linear-gradient(135deg, #4a5568 0%, #2d3748 100%);border-radius: 15px;">
                     <i class="fas fa-hdd"></i> النسخ الاحتياطي
                 </button>
 
                 <button onclick="showSection('logs')"
-                    class="btn btn-outline-info <?= ($active_section == 'logs') ? 'active' : '' ?>">
+                    class="btn btn-outline-danger text-start bg-dark text-white d-flex align-items-center gap-3 py-3 hover-effect  <?= ($active_section == 'logs') ? 'active' : '' ?>"
+                    style="background: linear-gradient(135deg, #4a5568 0%, #2d3748 100%);border-radius: 15px;">
                     <i class="fas fa-hdd"></i> سجلات النشاطات
                 </button>
 
                 <button onclick="showSection('payment')"
-                    class="btn btn-outline-info <?= ($active_section == 'payment') ? 'active' : '' ?>">
+                    class="btn btn-outline-danger text-start bg-dark text-white d-flex align-items-center gap-3 py-3 hover-effect  <?= ($active_section == 'payment') ? 'active' : '' ?>"
+                    style="background: linear-gradient(135deg, #4a5568 0%, #2d3748 100%);border-radius: 15px;">
                     <i class="fas fa-hdd"></i> سجلات الدفع
                 </button>
 
                 <button onclick="showSection('complaints')"
-                    class="btn btn-outline-info <?= ($active_section == 'complaints') ? 'active' : '' ?>">
+                    class="btn  btn-outline-danger text-start bg-dark text-white d-flex align-items-center gap-3 py-3 hover-effect  <?= ($active_section == 'complaints') ? 'active' : '' ?>"
+                    style="background: linear-gradient(135deg, #4a5568 0%, #2d3748 100%);border-radius: 15px;">
                     <i class="fas fa-exclamation-circle"></i> إدارة الشكاوى
                 </button>
 
                 <button onclick="showSection('slider')"
-                    class="btn btn-outline-info <?= ($active_section == 'slider') ? 'active' : '' ?>">
+                    class="btn text-start bg-dark text-white d-flex align-items-center gap-3 py-3 hover-effect  <?= ($active_section == 'slider') ? 'active' : '' ?>"
+                    style="background: linear-gradient(135deg, #4a5568 0%, #2d3748 100%);border-radius: 15px;">
                     <i class="fas fa-images"></i> إدارة السلايدر
                 </button>
 
                 <button onclick="showSection('news_ticker')"
-                    class="btn btn-outline-info <?= ($active_section == 'news_ticker') ? 'active' : '' ?>">
+                    class="btn text-start bg-dark text-white d-flex align-items-center gap-3 py-3 hover-effect  <?= ($active_section == 'news_ticker') ? 'active' : '' ?>"
+                    style="background: linear-gradient(135deg, #4a5568 0%, #2d3748 100%);border-radius: 15px;">
                     <i class="fas fa-newspaper"></i> الشريط الأخباري
                 </button>
 
                 <button onclick="showSection('categories')"
-                    class="btn btn-outline-warning <?= ($active_section == 'categories') ? 'active' : '' ?>">
+                    class="btn text-start bg-dark text-white d-flex align-items-center gap-3 py-3 hover-effect  <?= ($active_section == 'categories') ? 'active' : '' ?>"
+                    style="background: linear-gradient(135deg, #4a5568 0%, #2d3748 100%);border-radius: 15px;">
                     <i class="fas fa-tags"></i> إدارة التصنيفات
                 </button>
 
                 <button onclick="showSection('settings')"
-                    class="btn btn-outline-primary <?= ($active_section == 'settings') ? 'active' : '' ?>">
-                    <i class="fas fa-sync-alt"></i>  الإعدادات
+                    class="btn text-start bg-dark text-white d-flex align-items-center gap-3 py-3 hover-effect  <?= ($active_section == 'settings') ? 'active' : '' ?>"
+                    style="background: linear-gradient(135deg, #4a5568 0%, #2d3748 100%);border-radius: 15px;">
+                    <i class="fas fa-cog"></i> الإعدادات
                 </button>
-
-               
-
-               
+                <button onclick="showSection('reports')"
+                    class="btn btn-outline-success text-start bg-dark text-white d-flex align-items-center gap-3 py-3 hover-effect  <?= ($active_section == 'reports') ? 'active' : '' ?>"
+                    style="background: linear-gradient(135deg, #4a5568 0%, #2d3748 100%);border-radius: 15px;">
+                    <i class="fas fa-chart-bar"></i> التقارير
+                </button>
             </div>
         </div>
 
         <!-- المحتوى الرئيسي -->
         <div class="col-md-9 p-4">
+
             <!-- قسم الرئيسية -->
             <div id="personal" class="content-section <?= ($active_section == 'personal') ? 'active' : '' ?>">
                 <div class="card">
@@ -161,6 +200,7 @@ Swal.fire({
                 </div>
             </div>
 
+            <!--قسم التصنيفات -->
             <div id="categories" class="content-section <?= ($active_section == 'categories') ? 'active' : '' ?>">
                 <div class="card">
                     <div class="card-body">
@@ -264,6 +304,7 @@ Swal.fire({
                 </div>
             </div>
 
+            <!--قسم الأخبار -->
             <div id="news_ticker" class="content-section <?= ($active_section == 'news_ticker') ? 'active' : '' ?>">
                 <div class="card">
                     <div class="card-body">
@@ -280,10 +321,10 @@ Swal.fire({
 
                         <!-- قائمة الأخبار -->
                         <div class="mt-4">
-                            <?php
-                $news = $conn->query("SELECT * FROM news_ticker");
-                while ($item = $news->fetch_assoc()):
-                ?>
+                                        <?php
+                            $news = $conn->query("SELECT * FROM news_ticker");
+                            while ($item = $news->fetch_assoc()):
+                            ?>
                             <div class="card mb-3">
                                 <div class="card-body">
                                     <form action="process_news.php" method="POST">
@@ -300,14 +341,116 @@ Swal.fire({
                     </div>
                 </div>
             </div>
+
             <!-- قسم  الاعدادات -->
             <div id="settings" class="content-section <?= ($active_section == 'settings') ? 'active' : '' ?>">
-                <div class="card">
-                    <div class="card-body">
-                        <?php require __DIR__ . '/settings.php'; ?>
+                <div class="card border-0 shadow-sm">
+                    <div class="card-header bg-gradient-primary text-white py-3">
+                        <h5 class="mb-0 fw-bold">
+                            <i class="fas fa-cog me-2"></i> إدارة الإعدادات العامة
+                        </h5>
+                    </div>
+
+                    <div class="card-body p-4">
+                        
+                        <form method="POST" action="settings.php">
+                            <div class="mb-4">
+                                <label class="form-label text-muted mb-2">سعر الشراء (ل.س)</label>
+                                <div class="input-group">
+                                    <span class="input-group-text bg-light">
+                                        <i class="fas fa-tag text-primary"></i>
+                                    </span>
+                                    <input type="number" step="0.01" name="settings[purchase_price]"
+                                        class="form-control border-start-0 ps-3"
+                                        value="<?= $settings['purchase_price'] ?>" required>
+                                </div>
+                            </div>
+
+                            <div class="mb-4">
+                                <label class="form-label text-muted mb-2">سعر الإعارة (ل.س)</label>
+                                <div class="input-group">
+                                    <span class="input-group-text bg-light">
+                                        <i class="fas fa-hand-holding-usd text-primary"></i>
+                                    </span>
+                                    <input type="number" step="0.01" name="settings[rental_price]"
+                                        class="form-control border-start-0 ps-3"
+                                        value="<?= $settings['rental_price'] ?>" required>
+                                </div>
+                            </div>
+
+                            <div class="mb-4">
+                                <label class="form-label text-muted mb-2">غرامة التأخير اليومية (ل.س)</label>
+                                <div class="input-group">
+                                    <span class="input-group-text bg-light">
+                                        <i class="fas fa-exclamation-triangle text-primary"></i>
+                                    </span>
+                                    <input type="number" step="0.01" name="settings[late_fee]"
+                                        class="form-control border-start-0 ps-3" value="<?= $settings['late_fee'] ?>"
+                                        required>
+                                </div>
+                                <small class="text-muted">القيمة المطلوبة يجب أن تكون أكبر من الصفر</small>
+                            </div>
+
+                            <div class="d-grid gap-2 mt-4">
+                                <button type="submit" class="btn btn-primary btn-lg rounded-pill">
+                                    <i class="fas fa-save me-2"></i> حفظ التغييرات
+                                </button>
+                            </div>
+                        </form>
                     </div>
                 </div>
             </div>
+
+            <!-- قسم التقارير -->
+            <!-- في قسم التقارير -->
+<div id="reports" class="content-section <?= ($active_section == 'reports') ? 'active' : '' ?>">
+    <div class="card">
+        <div class="card-body">
+            <!-- نموذج التقارير -->
+            <form method="post" action="manage_reports.php">
+                <div class="mb-3">
+                    <label for="report_type" class="form-label">اختر نوع التقرير:</label>
+                    <select class="form-select" id="report_type" name="report_type">
+                        <?php
+                        $reportTypes = [
+                            'users' => 'تقارير المستخدمين',
+                            'books' => 'تقارير الكتب',
+                            'borrow_requests' => 'تقارير طلبات الإعارة',
+                            'payments' => 'تقارير المدفوعات',
+                            'notifications' => 'تقارير الإشعارات'
+                        ];
+                        foreach ($reportTypes as $key => $value) {
+                            $selected = ($_POST['report_type'] ?? 'users') == $key ? 'selected' : '';
+                            echo "<option value='$key' $selected>$value</option>";
+                        }
+                        ?>
+                    </select>
+                </div>
+                <div class="mb-3">
+                    <label for="start_date" class="form-label">تاريخ البداية:</label>
+                    <input type="date" class="form-control" id="start_date" name="start_date" 
+                        value="<?= $_POST['start_date'] ?? date('Y-m-d', strtotime('-1 month')) ?>">
+                </div>
+                <div class="mb-3">
+                    <label for="end_date" class="form-label">تاريخ النهاية:</label>
+                    <input type="date" class="form-control" id="end_date" name="end_date" 
+                        value="<?= $_POST['end_date'] ?? date('Y-m-d') ?>">
+                </div>
+                <button type="submit" class="btn btn-primary">عرض التقرير</button>
+            </form>
+
+            <!-- عرض النتائج من الجلسة -->
+            <?php if (isset($_SESSION['report_results'])): ?>
+                <div class="mt-4">
+                    <?= $_SESSION['report_results'] ?>
+                </div>
+                <?php unset($_SESSION['report_results']); ?>
+            <?php endif; ?>
+        </div>
+    </div>
+</div>
+
+
         </div>
     </div>
 </div>
@@ -341,5 +484,5 @@ function toggleSidebar() {
 </script>
 
 <?php 
-ob_end_flush();
+
 require __DIR__ . '/../includes/footer.php'; ?>

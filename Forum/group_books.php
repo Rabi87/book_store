@@ -9,7 +9,7 @@ if (!isset($_SESSION['user_id'])) {
 
 // التحقق من وجود الرمز الفريد للمجموعة
 if (!isset($_GET['code'])) {
-    header("Location: manage_groups.php");
+    header("Location: /Forum/manage_groups.php");
     exit();
 }
 
@@ -53,7 +53,7 @@ if ($isOwner && $_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['book_link
     $stmt->bind_param("isi", $group['group_id'], $bookLink, $user_id);
     $stmt->execute();
     $_SESSION['message'] = "تم إضافة الكتاب بنجاح!";
-    header("Location: group_books.php?code=" . $code);
+    header("Location: /Forum/group_books.php?code=" . $code);
     exit();
 }
 
@@ -74,7 +74,7 @@ require __DIR__ . '/../includes/header.php';
 <div class="container mt-4">
     <h3>
         كتب المجموعة
-        <a href="<?= BASE_URL ?>manage_groups.php" class="btn btn-secondary btn-sm float-left">العودة للمجموعات</a>
+        <a href="<?= BASE_URL ?>Forum/manage_groups.php" class="btn btn-secondary btn-sm float-left">العودة للمجموعات</a>
     
     </h3>
     

@@ -122,6 +122,7 @@ $user = $result->fetch_assoc();
                             id="password" 
                             class="form-control border-start-0 ps-3"
                             placeholder="اتركه فارغاً إذا لم ترغب في التغيير"
+                            autocomplete="new-password"
                         >
                         <button 
                             type="button" 

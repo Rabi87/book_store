@@ -32,8 +32,13 @@ ob_end_clean(); // مسح المخرجات المخزنة قبل إرسال ال
     <!-- 3. الملفات المحلية -->
     <link rel="stylesheet" href="<?= BASE_URL ?>assets/css/style.css?v=<?= time() ?>">
 
+    <link href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css" rel="stylesheet">
+
     <!-- 4. السكربتات -->
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+    
+    
 </head>
 <style>
 .hover-effect {
@@ -50,6 +55,8 @@ ob_end_clean(); // مسح المخرجات المخزنة قبل إرسال ال
 .hover-effect:hover i {
     color: #e2e8f0 !important;
 }
+
+
 </style>
 
 <body class="d-flex flex-column min-vh-100">
@@ -97,6 +104,7 @@ ob_end_clean(); // مسح المخرجات المخزنة قبل إرسال ال
                                                 <?= ($_SESSION['user_type'] == 'admin') ? 'مدير النظام' : 'مستخدم' ?>
                                             </span>
                                         </div>
+                                        
                                     </div>
 
                                     <!-- زر الخروج -->
@@ -148,6 +156,8 @@ ob_end_clean(); // مسح المخرجات المخزنة قبل إرسال ال
                                 لوحة التحكم
                             </a> </li>
                         <?php endif; ?>
+
+                       
                     </ul>
                 </div>
             </nav>

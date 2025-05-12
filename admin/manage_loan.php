@@ -141,6 +141,8 @@ require __DIR__ . '/../includes/functions.php';
         </div>
     </div>
 </div>
+
+
 <div class="container-fluid py-4">
     <div class="card border-0 shadow-sm mb-4">
         <div class="card-header bg-gradient-primary text-white py-3">
@@ -213,7 +215,9 @@ require __DIR__ . '/../includes/functions.php';
                     <ul class="pagination justify-content-center mb-0">
                         <?php if ($current_page > 1): ?>
                         <li class="page-item">
-                            <a class="page-link" href="?page=<?= $current_page - 1 ?>&section=ops" aria-label="السابق">
+                            <a class="page-link" 
+                            href="?page=<?= $current_page - 1 ?>
+                            &section=ops" aria-label="السابق">
                                 <span aria-hidden="true">&laquo;</span>
                             </a>
                         </li>
