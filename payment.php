@@ -114,7 +114,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 }else{
     
-    $amount = isset($_SESSION['funds']) ? (float)$_SESSION['funds'] : 50000;  
+    $amount = isset($_SESSION['funds']) ? (float)$_SESSION['funds'] : 500004;  
 }
 
 // ━━━━━━━━━━ عرض واجهة الدفع ━━━━━━━━━━
